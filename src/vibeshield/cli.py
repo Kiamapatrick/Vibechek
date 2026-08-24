@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 
 import typer
@@ -31,8 +32,15 @@ def main(
         None, "--version", "-v", callback=version_callback, is_eager=True,
         help="Show version and exit"
     ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v",
+        help="Enable verbose logging (DEBUG level)",
+    ),
 ):
-    pass
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.WARNING,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
 
 @app.command()
@@ -65,10 +73,6 @@ def scan(
     max_depth: int = typer.Option(
         settings.DEFAULT_MAX_DEPTH, "--max-depth",
         help="Maximum crawl depth",
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose",
-        help="Enable verbose logging",
     ),
 ):
     """
@@ -126,11 +130,10 @@ def scan(
     except KeyboardInterrupt:
         console.print("\n[yellow]Scan interrupted by user[/yellow]")
         raise typer.Exit(code=130)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- top-level CLI guard, must catch anything to fail gracefully
         console.print(f"[red]Scan failed:[/red] {e}")
-        if verbose:
-            import traceback
-            console.print(traceback.format_exc())
+        import traceback
+        console.print(traceback.format_exc())
         raise typer.Exit(code=1)
 
     output_content = ""

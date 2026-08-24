@@ -1,3 +1,4 @@
+import logging
 from typing import ClassVar
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
@@ -7,6 +8,8 @@ from vibeshield.scanner.scoring import calculate_severity
 from vibeshield.scanner.tagging import apply_tags_to_findings
 from vibeshield.utils.http import HTTPClient
 from vibeshield.utils.patterns import VERSION_PATTERNS
+
+log = logging.getLogger(__name__)
 
 
 class OutdatedDepsCheck(BaseCheck):
@@ -86,6 +89,7 @@ class OutdatedDepsCheck(BaseCheck):
                 if resp.status_code == 200:
                     scripts.append(resp.text)
             except Exception:
+                log.warning("Failed to fetch script bundle", exc_info=True)
                 continue
         return scripts
 

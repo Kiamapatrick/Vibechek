@@ -1,9 +1,13 @@
+import logging
+
 from vibeshield.models.finding import Evidence, Finding
 from vibeshield.models.recon import ReconData
 from vibeshield.scanner.checks.base import BaseCheck
 from vibeshield.scanner.scoring import calculate_severity
 from vibeshield.utils.http import HTTPClient
 from vibeshield.utils.patterns import SECRET_PATTERNS
+
+log = logging.getLogger(__name__)
 
 
 class ExposedSecretsCheck(BaseCheck):
@@ -23,6 +27,7 @@ class ExposedSecretsCheck(BaseCheck):
                 content = resp.text
                 findings.extend(self._scan_content(content, js_url, resp))
             except Exception:
+                log.warning("Failed to fetch JS script", exc_info=True)
                 continue
 
         findings.extend(self._scan_content(all_html, recon.target_url, None))
@@ -33,6 +38,7 @@ class ExposedSecretsCheck(BaseCheck):
                 if resp.status_code == 200 and "=" in resp.text:
                     findings.append(self._create_env_finding(env_path, resp))
             except Exception:
+                log.warning("Failed to fetch .env file", exc_info=True)
                 continue
 
         for f in findings:

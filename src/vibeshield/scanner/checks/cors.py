@@ -1,9 +1,13 @@
+import logging
+
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
 from vibeshield.scanner.checks.base import BaseCheck
 from vibeshield.scanner.scoring import calculate_severity
 from vibeshield.scanner.tagging import apply_tags_to_findings
 from vibeshield.utils.http import HTTPClient
+
+log = logging.getLogger(__name__)
 
 
 class CORSCheck(BaseCheck):
@@ -55,6 +59,7 @@ class CORSCheck(BaseCheck):
                 timeout=5.0,
             )
         except Exception:
+            log.warning("OPTIONS request failed, trying GET", exc_info=True)
             try:
                 resp = await http.get(
                     url,
@@ -62,6 +67,7 @@ class CORSCheck(BaseCheck):
                     timeout=5.0,
                 )
             except Exception:
+                log.warning("GET request also failed", exc_info=True)
                 return None
 
         acao = resp.headers.get("access-control-allow-origin", "")

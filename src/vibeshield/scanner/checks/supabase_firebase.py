@@ -1,3 +1,4 @@
+import logging
 import re
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
@@ -6,6 +7,8 @@ from vibeshield.scanner.checks.base import BaseCheck
 from vibeshield.scanner.scoring import calculate_severity
 from vibeshield.scanner.tagging import apply_tags_to_findings
 from vibeshield.utils.http import HTTPClient
+
+log = logging.getLogger(__name__)
 
 
 class SupabaseFirebaseCheck(BaseCheck):
@@ -49,6 +52,7 @@ class SupabaseFirebaseCheck(BaseCheck):
                 if resp.status_code == 200:
                     scripts.append(resp.text)
             except Exception:
+                log.warning("Failed to fetch script", exc_info=True)
                 continue
         return scripts
 
@@ -80,6 +84,7 @@ class SupabaseFirebaseCheck(BaseCheck):
             role = data.get("role", "")
             return role in ("anon", "anonymous")
         except Exception:
+            log.warning("Failed to parse JWT", exc_info=True)
             return False
 
     async def _test_supabase_rls(self, base_url: str, anon_key: str, http: HTTPClient) -> Finding | None:
@@ -128,7 +133,7 @@ class SupabaseFirebaseCheck(BaseCheck):
                         ],
                     )
             except Exception:
-                pass
+                log.warning("Supabase GET request failed", exc_info=True)
 
             # CONDITIONAL: POST only if write tests enabled
             if self.allow_write_tests:
@@ -169,7 +174,7 @@ class SupabaseFirebaseCheck(BaseCheck):
                             ],
                         )
                 except Exception:
-                    pass
+                    log.warning("Supabase POST request failed", exc_info=True)
         return None
 
     async def _check_firebase(self, content: str, recon: ReconData, http: HTTPClient) -> list[Finding]:
@@ -215,7 +220,7 @@ class SupabaseFirebaseCheck(BaseCheck):
                     ],
                 )
         except Exception:
-            pass
+                log.warning("Firebase Realtime DB request failed", exc_info=True)
 
         firestore_url = (
             f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents"
@@ -247,6 +252,6 @@ class SupabaseFirebaseCheck(BaseCheck):
                     ],
                 )
         except Exception:
-            pass
+            log.warning("Firestore API request failed", exc_info=True)
 
         return None

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections import deque
 from urllib.parse import urldefrag, urljoin, urlparse
 
@@ -7,6 +8,8 @@ from bs4 import BeautifulSoup
 from vibeshield.models.recon import CrawledPage, FingerprintResult, ReconData
 from vibeshield.utils.http import HTTPClient
 from vibeshield.utils.patterns import BAAS_PATTERNS, FRAMEWORK_PATTERNS
+
+log = logging.getLogger(__name__)
 
 
 class Crawler:
@@ -105,6 +108,7 @@ class Crawler:
                     forms=forms,
                 )
             except Exception:
+                log.warning("Failed to fetch page", exc_info=True)
                 return None
 
     def _normalize_url(self, url: str) -> str | None:
@@ -115,6 +119,7 @@ class Crawler:
             absolute, _ = urldefrag(absolute)
             return absolute
         except Exception:
+            log.warning("Failed to normalize URL", exc_info=True)
             return None
 
     def _is_same_origin(self, url: str) -> bool:
@@ -122,6 +127,7 @@ class Crawler:
             parsed = urlparse(url)
             return parsed.netloc == self.parsed_base.netloc
         except Exception:
+            log.warning("Failed to parse URL for origin check", exc_info=True)
             return False
 
     def _extract_links(self, page: CrawledPage) -> None:

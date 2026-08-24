@@ -138,7 +138,6 @@ class TestRateLimitingCheck:
             "method": "POST",
             "inputs": [{"name": "email"}, {"name": "password"}],
         }]
-        endpoints = check._identify_auth_endpoints(recon)
         # Should be filtered out by denylist
         assert "https://example.com/api/auth/signup" not in check._identify_auth_endpoints(recon)
 
@@ -234,27 +233,22 @@ class TestRateLimitingCheck:
         assert finding is None
 
     @pytest.mark.asyncio
-    async def test_partial_success_no_finding(self, check, recon, mock_http):
-        """Some 401/403 responses still count as successful (auth working)."""
+    async def test_partial_success_creates_finding(self, check, recon, mock_http):
+        """5x401 = 5 successful attempts = 100% > 60% threshold = finding created."""
         mock_http.responses = {
             "https://example.com/api/auth/login": make_response(status=401, text="Unauthorized"),
         }
 
         finding = await check._test_rate_limiting("https://example.com/api/auth/login", recon, mock_http)
-        # 401 counts as successful (auth working), but only 1 attempt succeeds out of 5
-        finding = await check._test_rate_limiting("https://example.com/api/auth/login", recon, mock_http)
-        # Actually 5 attempts with 401 = 5 successful (401 is in success codes)
-        # Wait, let me check the code: success codes are (200, 201, 302, 401, 403, 422)
-        # So 5 x 401 = 5 successful = 100% > 60% = finding should be created
-        # But the test expects no finding... let me check
-        # Actually the test should verify the behavior
+        assert finding is not None
+        assert finding.severity == SeverityLevel.HIGH
 
     @pytest.mark.asyncio
     async def test_network_errors_handled(self, check, recon, mock_http):
         """Network errors are handled gracefully."""
         class FailingClient:
             async def post(self, url, **kwargs):
-                raise Exception("Network error")
+                raise ConnectionError("Network error")
             async def aclose(self):
                 pass
 

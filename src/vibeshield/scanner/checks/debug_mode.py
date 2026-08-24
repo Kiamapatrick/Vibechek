@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import ClassVar
 
@@ -8,6 +9,8 @@ from vibeshield.scanner.scoring import calculate_severity
 from vibeshield.scanner.tagging import apply_tags_to_findings
 from vibeshield.utils.http import HTTPClient
 from vibeshield.utils.patterns import DEBUG_ENDPOINTS
+
+log = logging.getLogger(__name__)
 
 
 class DebugModeCheck(BaseCheck):
@@ -79,6 +82,7 @@ class DebugModeCheck(BaseCheck):
                             ))
                             break
             except Exception:
+                log.warning("Verbose error check failed", exc_info=True)
                 continue
         return findings
 
@@ -115,6 +119,7 @@ class DebugModeCheck(BaseCheck):
                         ],
                     ))
             except Exception:
+                log.warning("Debug endpoint check failed", exc_info=True)
                 continue
         return findings
 

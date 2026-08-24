@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 from typing import ClassVar
 
@@ -8,6 +9,8 @@ from vibeshield.scanner.checks.base import BaseCheck
 from vibeshield.scanner.scoring import calculate_severity
 from vibeshield.scanner.tagging import apply_tags_to_findings
 from vibeshield.utils.http import HTTPClient
+
+log = logging.getLogger(__name__)
 
 
 class RateLimitingCheck(BaseCheck):
@@ -102,8 +105,9 @@ class RateLimitingCheck(BaseCheck):
                     "headers": dict(resp.headers),
                     "text": resp.text[:200],
                 })
-            except Exception as e:
-                results.append({"error": str(e)})
+            except Exception:
+                log.warning("Rate limit test request failed", exc_info=True)
+                results.append({"error": "network_error"})
 
             await asyncio.sleep(0.1)
 

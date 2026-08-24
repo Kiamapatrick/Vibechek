@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import UTC, datetime
 
@@ -8,6 +9,8 @@ from vibeshield.models.report import JSONReport, PlainReport, ScanMetadata, Summ
 from vibeshield.scanner.checks import ALL_CHECKS
 from vibeshield.scanner.recon import Reconnaissance
 from vibeshield.utils.http import HTTPClient
+
+log = logging.getLogger(__name__)
 
 
 class ScannerEngine:
@@ -92,7 +95,7 @@ class ScannerEngine:
                 findings = await check.run(recon, http)
                 all_findings.extend(findings)
             except Exception:
-                pass
+                log.warning("Check failed, continuing", exc_info=True)
 
         return all_findings
 

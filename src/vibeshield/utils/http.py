@@ -1,3 +1,5 @@
+from typing import Self
+
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -10,7 +12,7 @@ class HTTPClient:
         self.max_redirects = max_redirects
         self._client: httpx.AsyncClient | None = None
 
-    async def __aenter__(self) -> "HTTPClient":
+    async def __aenter__(self) -> Self:
         self._client = httpx.AsyncClient(
             timeout=self.timeout,
             follow_redirects=True,

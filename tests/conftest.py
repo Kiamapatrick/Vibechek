@@ -53,7 +53,8 @@ def mock_http_response(sample_html, sample_headers):
 
         def raise_for_status(self):
             if self.status_code >= 400:
-                raise Exception(f"HTTP {self.status_code}")
+                from http.client import HTTPException
+                raise HTTPException(f"HTTP {self.status_code}")
 
     return MockResponse
 

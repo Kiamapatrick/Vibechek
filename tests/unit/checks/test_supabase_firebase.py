@@ -49,7 +49,7 @@ def make_response(status=200, text="<html><body></body></html>", headers=None):
         import json
         try:
             mock.json = MagicMock(return_value=json.loads(text) if text else {})
-        except Exception:
+        except ConnectionError:
             mock.json = MagicMock(return_value={})
     else:
         mock.json = MagicMock(return_value={})

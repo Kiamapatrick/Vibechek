@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import ClassVar
 
@@ -7,6 +8,8 @@ from vibeshield.scanner.checks.base import BaseCheck
 from vibeshield.scanner.scoring import calculate_severity
 from vibeshield.scanner.tagging import apply_tags_to_findings
 from vibeshield.utils.http import HTTPClient
+
+log = logging.getLogger(__name__)
 
 
 class UnprotectedRoutesCheck(BaseCheck):
@@ -80,6 +83,7 @@ class UnprotectedRoutesCheck(BaseCheck):
         try:
             resp = await http.get(url, timeout=5.0)
         except Exception:
+            log.warning("Endpoint test request failed", exc_info=True)
             return None
 
         if resp.status_code >= 400:
@@ -128,11 +132,9 @@ class UnprotectedRoutesCheck(BaseCheck):
         )
 
     def _looks_like_sensitive_data(self, content: str, content_type: str) -> bool:
-        if "application/json" in content_type:
-            return True
-        if any(re.search(p, content) for p in self.SENSITIVE_RESPONSE_PATTERNS):
-            return True
-        return False
+        return "application/json" in content_type or any(
+            re.search(p, content) for p in self.SENSITIVE_RESPONSE_PATTERNS
+        )
 
     def _has_auth_indicators(self, resp) -> bool:
         set_cookie = resp.headers.get("set-cookie", "")
@@ -157,7 +159,7 @@ class UnprotectedRoutesCheck(BaseCheck):
                     if any(k in body for k in auth_keys):
                         return True
             except Exception:
-                pass
+                log.warning("Failed to parse JSON body", exc_info=True)
         
         return False
 
