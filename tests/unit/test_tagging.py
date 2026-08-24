@@ -16,7 +16,7 @@ class TestTagging:
     def test_unprotected_routes_tags(self):
         wstg, attck = get_tags_for_check("UnprotectedRoutesCheck")
         assert wstg == "WSTG-ATHZ-01"
-        assert attck == ["T1556.002"]
+        assert attck == ["T1190"]
 
     def test_security_headers_tags(self):
         wstg, attck = get_tags_for_check("SecurityHeadersCheck")
@@ -26,7 +26,7 @@ class TestTagging:
     def test_cors_tags(self):
         wstg, attck = get_tags_for_check("CORSCheck")
         assert wstg == "WSTG-CONF-06"
-        assert attck == ["T1556.002"]
+        assert attck == ["T1190"]
 
     def test_debug_mode_tags(self):
         wstg, attck = get_tags_for_check("DebugModeCheck")

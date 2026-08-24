@@ -1,9 +1,9 @@
 TAG_MAP = {
     "ExposedSecretsCheck": ("WSTG-INFO-02", ["T1552.001"]),
     "SupabaseFirebaseCheck": ("WSTG-ATHZ-02", ["T1213"]),
-    "UnprotectedRoutesCheck": ("WSTG-ATHZ-01", ["T1556.002"]),
+    "UnprotectedRoutesCheck": ("WSTG-ATHZ-01", ["T1190"]),
     "SecurityHeadersCheck": ("WSTG-CONF-06", ["T1598.001"]),
-    "CORSCheck": ("WSTG-CONF-06", ["T1556.002"]),
+    "CORSCheck": ("WSTG-CONF-06", ["T1190"]),
     "DebugModeCheck": ("WSTG-INFO-02", ["T1592.002"]),
     "OutdatedDepsCheck": ("WSTG-CONF-06", ["T1190"]),
     "RateLimitingCheck": ("WSTG-ATHN-01", ["T1110.001", "T1110.003"]),
