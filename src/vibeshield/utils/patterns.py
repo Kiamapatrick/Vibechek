@@ -33,7 +33,7 @@ FRAMEWORK_PATTERNS: list[tuple[str, Pattern]] = [
 
 BAAS_PATTERNS: list[tuple[str, Pattern]] = [
     ("supabase", re.compile(r"(?i)(supabase\.co|createClient\(|from ['\"]@supabase)")),
-    ("firebase", re.compile(r"(?i)(firebaseapp\.com|firebaseio\.com|googleapis\.com|initializeApp|getFirestore)")),
+    ("firebase", re.compile(r"(?i)(firebaseapp\.com|firebaseio\.com|googleapis\.com|initializeApp|getFirestore|firebaseConfig)")),
     ("appwrite", re.compile(r"(?i)(appwrite|cloud\.appwrite\.io)")),
     ("pocketbase", re.compile(r"(?i)(pocketbase|pb_data)")),
 ]
