@@ -1,4 +1,5 @@
 import re
+import json
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
@@ -137,6 +138,24 @@ class UnprotectedRoutesCheck(BaseCheck):
         www_auth = resp.headers.get("www-authenticate", "")
         if www_auth:
             return True
+        
+        # NEW: Authorization: Bearer <token> header
+        auth_header = resp.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            return True
+        
+        # NEW: JSON body with access_token/session/token
+        if "application/json" in resp.headers.get("content-type", ""):
+            try:
+                import json
+                body = resp.json() if hasattr(resp, 'json') else json.loads(resp.text)
+                if isinstance(body, dict):
+                    auth_keys = {"access_token", "session", "id_token", "refresh_token", "token"}
+                    if any(k in body for k in auth_keys):
+                        return True
+            except Exception:
+                pass
+        
         return False
 
     def _assess_impact(self, content: str) -> int:
