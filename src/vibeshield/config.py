@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Settings:
-    VERSION: str = "0.1.0"
+    VERSION: str = "1.0.0"
     DEFAULT_TIMEOUT: float = 10.0
     DEFAULT_MAX_PAGES: int = 20
     DEFAULT_MAX_DEPTH: int = 2
