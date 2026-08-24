@@ -14,6 +14,9 @@ class SupabaseFirebaseCheck(BaseCheck):
     wstg_id = ""
     attck_ids = []
 
+    # Class attribute for hasattr() check in engine - enables write tests when set via CLI flag
+    allow_write_tests: bool = False
+
     def __init__(self):
         super().__init__()
         self.supabase_key_pattern = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
@@ -68,13 +71,16 @@ class SupabaseFirebaseCheck(BaseCheck):
     def _is_supabase_anon_key(self, key: str) -> bool:
         try:
             import base64
+            import json
             parts = key.split(".")
             if len(parts) != 3:
                 return False
             payload = parts[1]
             payload += "=" * (-len(payload) % 4)
             decoded = base64.urlsafe_b64decode(payload).decode()
-            return '"role":"anon"' in decoded or '"role":"anonymous"' in decoded
+            data = json.loads(decoded)
+            role = data.get("role", "")
+            return role in ("anon", "anonymous")
         except Exception:
             return False
 
@@ -88,46 +94,17 @@ class SupabaseFirebaseCheck(BaseCheck):
         }
 
         for table in test_tables:
+            # PRIMARY: GET first (read test) — always runs
             try:
-                resp = await http.post(
+                resp = await http.get(
                     f"{base_url}/rest/v1/{table}",
                     headers=headers,
-                    json={},
                     timeout=5.0,
                 )
-                if resp.status_code == 201:
+                if resp.status_code == 200 and resp.text not in ("null", ""):
                     evidence = Evidence(
                         url=f"{base_url}/rest/v1/{table}",
-                        snippet=f"POST succeeded - RLS may not be blocking inserts on '{table}'",
-                        matched_pattern=anon_key[:20] + "...",
-                        request_headers=headers,
-                        response_headers=dict(resp.headers),
-                        response_status=resp.status_code,
-                    )
-                    return Finding(
-                        check=self.name,
-                        title=f"Supabase RLS Bypass on '{table}' Table",
-                        severity=SeverityLevel.CRITICAL,
-                        score=20,
-                        impact=5,
-                        likelihood=4,
-                        wstg_id="",
-                        attck_ids=[],
-                        evidence=evidence,
-                        confidence=0.85,
-                        remediation=(
-                            f"Enable Row Level Security on '{table}' table in Supabase Dashboard. "
-                            f"Create policies: `CREATE POLICY ... USING (auth.role() = 'authenticated');`"
-                        ),
-                        references=[
-                            "https://supabase.com/docs/guides/auth/row-level-security",
-                            "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/02-Testing_Authorization_Bypass",
-                        ],
-                    )
-                elif resp.status_code == 200:
-                    evidence = Evidence(
-                        url=f"{base_url}/rest/v1/{table}",
-                        snippet=f"GET succeeded - RLS may not be blocking reads on '{table}'",
+                        snippet=f"GET succeeded - RLS may not be blocking reads on '{table}': {resp.text[:200]}",
                         matched_pattern=anon_key[:20] + "...",
                         request_headers=headers,
                         response_headers=dict(resp.headers),
@@ -153,7 +130,48 @@ class SupabaseFirebaseCheck(BaseCheck):
                         ],
                     )
             except Exception:
-                continue
+                pass
+
+            # CONDITIONAL: POST only if write tests enabled
+            if self.allow_write_tests:
+                try:
+                    resp = await http.post(
+                        f"{base_url}/rest/v1/{table}",
+                        headers=headers,
+                        json={},
+                        timeout=5.0,
+                    )
+                    if resp.status_code == 201:
+                        evidence = Evidence(
+                            url=f"{base_url}/rest/v1/{table}",
+                            snippet=f"POST succeeded - RLS may not be blocking inserts on '{table}'",
+                            matched_pattern=anon_key[:20] + "...",
+                            request_headers=headers,
+                            response_headers=dict(resp.headers),
+                            response_status=resp.status_code,
+                        )
+                        return Finding(
+                            check=self.name,
+                            title=f"Supabase RLS Bypass on '{table}' Table",
+                            severity=SeverityLevel.CRITICAL,
+                            score=20,
+                            impact=5,
+                            likelihood=4,
+                            wstg_id="",
+                            attck_ids=[],
+                            evidence=evidence,
+                            confidence=0.85,
+                            remediation=(
+                                f"Enable Row Level Security on '{table}' table in Supabase Dashboard. "
+                                f"Create policies: `CREATE POLICY ... USING (auth.role() = 'authenticated');`"
+                            ),
+                            references=[
+                                "https://supabase.com/docs/guides/auth/row-level-security",
+                                "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/02-Testing_Authorization_Bypass",
+                            ],
+                        )
+                except Exception:
+                    pass
         return None
 
     async def _check_firebase(self, content: str, recon: ReconData, http: HTTPClient) -> list[Finding]:

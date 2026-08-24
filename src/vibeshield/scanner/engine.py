@@ -17,11 +17,13 @@ class ScannerEngine:
         max_depth: int = settings.DEFAULT_MAX_DEPTH,
         max_pages: int = settings.DEFAULT_MAX_PAGES,
         timeout: float = settings.DEFAULT_TIMEOUT,
+        allow_write_tests: bool = False,
     ):
         self.target_url = target_url
         self.max_depth = max_depth
         self.max_pages = max_pages
         self.timeout = timeout
+        self.allow_write_tests = allow_write_tests
 
     async def run(self) -> tuple[PlainReport, JSONReport]:
         start_time = time.time()
@@ -83,6 +85,9 @@ class ScannerEngine:
 
         for check_class in ALL_CHECKS:
             check = check_class()
+            # Pass allow_write_tests to checks that declare it
+            if hasattr(check, "allow_write_tests"):
+                check.allow_write_tests = self.allow_write_tests
             try:
                 findings = await check.run(recon, http)
                 all_findings.extend(findings)

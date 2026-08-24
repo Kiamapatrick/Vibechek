@@ -47,6 +47,16 @@ class RateLimitingCheck(BaseCheck):
         apply_tags_to_findings(findings, self.__class__.__name__)
         return findings
 
+    # Denylist patterns for endpoints that should NOT be rate-limit tested
+    # (POSTing to these could create accounts, send reset emails, etc.)
+    DENYLIST_PATTERNS = [
+        r"signup",
+        r"register",
+        r"create.?account",
+        r"password.*reset",
+        r"forgot",
+    ]
+
     def _identify_auth_endpoints(self, recon: ReconData) -> list[str]:
         endpoints = set()
 
@@ -68,7 +78,13 @@ class RateLimitingCheck(BaseCheck):
             if any(re.search(p, ep) for p in self.AUTH_PATH_PATTERNS):
                 endpoints.add(ep)
 
-        filtered = [ep for ep in endpoints if ep.startswith(recon.base_url)]
+        # Filter out endpoints matching denylist patterns (signup, register, password reset, etc.)
+        deny_patterns = self.DENYLIST_PATTERNS
+        filtered = [
+            ep for ep in endpoints
+            if ep.startswith(recon.base_url)
+            and not any(re.search(p, ep, re.I) for p in deny_patterns)
+        ]
         return list(set(filtered))[:10]
 
     async def _test_rate_limiting(self, url: str, recon: ReconData, http: HTTPClient) -> Finding | None:

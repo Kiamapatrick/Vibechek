@@ -42,6 +42,10 @@ def scan(
         False, "--confirm-ownership", "-y",
         help="Confirm you own or have permission to scan this target (REQUIRED)",
     ),
+    allow_write_tests: bool = typer.Option(
+        False, "--allow-write-tests",
+        help="Allow write-based tests (e.g. Supabase RLS insert probe) that may create test data on the target. Off by default — read-only checks are sufficient for most findings.",
+    ),
     output: str = typer.Option(
         "plain", "--output", "-o",
         help="Output format: plain, json, or both",
@@ -85,6 +89,14 @@ def scan(
         ))
         raise typer.Exit(code=1)
 
+    if allow_write_tests:
+        console.print(Panel(
+            "[bold yellow]Warning:[/bold yellow] This will attempt to insert test data into discovered database tables.\n"
+            "Only use this against systems you own.",
+            title="[yellow]Write Tests Enabled[/yellow]",
+            border_style="yellow",
+        ))
+
     if not url.startswith(("http://", "https://")):
         console.print("[red]Error:[/red] URL must start with http:// or https://")
         raise typer.Exit(code=1)
@@ -106,6 +118,7 @@ def scan(
         max_depth=max_depth,
         max_pages=max_pages,
         timeout=timeout,
+        allow_write_tests=allow_write_tests,
     )
 
     try:
