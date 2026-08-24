@@ -98,3 +98,10 @@ class TestSupabaseFirebaseCheck:
         await check._check_supabase(anon_key, recon, supabase_mock_http)
 
         supabase_mock_http.post.assert_not_called()
+class TestFirebaseChecks:
+    # Tests for Firebase-specific checks in SupabaseFirebaseCheck
+    pass
+
+
+class TestFirebaseChecks:
+    pass

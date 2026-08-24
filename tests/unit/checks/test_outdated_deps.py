@@ -1,6 +1,61 @@
 import pytest
 from vibeshield.scanner.checks.outdated_deps import OutdatedDepsCheck
-from vibeshield.models.recon import ReconData
+from vibeshield.models.recon import ReconData, CrawledPage
+from tests.conftest import mock_httpx_client
+from unittest.mock import MagicMock
+import pytest_asyncio
+
+
+def make_response(status=200, text="<html><body></body></html>", headers=None):
+    mock = MagicMock()
+    mock.status_code = status
+    mock.text = text
+    mock.headers = headers or {"content-type": "text/html"}
+    if headers and "application/json" in headers.get("content-type", ""):
+        import json
+        try:
+            mock.json = MagicMock(return_value=json.loads(text) if text else {})
+        except Exception:
+            mock.json = MagicMock(return_value={})
+    else:
+        mock.json = MagicMock(return_value={})
+    return mock
+
+
+class MockHTTPClient:
+    def __init__(self, responses=None):
+        self.responses = responses or {}
+        self.call_count = 0
+
+    def _normalize_url(self, url):
+        return url.rstrip('/')
+
+    async def get(self, url, **kwargs):
+        self.call_count += 1
+        normalized = self._normalize_url(url)
+        if normalized in self.responses:
+            return self.responses[normalized]
+        mock = MagicMock()
+        mock.status_code = 404
+        mock.text = "<html><body>Not Found</body></html>"
+        mock.headers = {"content-type": "text/html"}
+        mock.json = MagicMock(return_value={})
+        return mock
+
+    async def get(self, url, **kwargs):
+        self.call_count += 1
+        normalized = self._normalize_url(url)
+        if normalized in self.responses:
+            return self.responses[normalized]
+        mock = MagicMock()
+        mock.status_code = 404
+        mock.text = "<html><body>Not Found</body></html>"
+        mock.headers = {"content-type": "text/html"}
+        mock.json = MagicMock(return_value={})
+        return mock
+
+    async def aclose(self):
+        pass
 
 
 SAFE_VERSIONS = {
@@ -96,11 +151,11 @@ class TestOutdatedDepsCheck:
     # === Version extraction from content ===
     @pytest.mark.parametrize("content,expected_deps", [
         ("lodash@4.17.20", [("lodash", "4.17.20")]),
-        ("@scope/pkg@1.2.3", [("pkg", "1.2.3")]),  # @ stripped by regex
+        ("@scope/pkg@1.2.3", [("pkg", "1.2.3")]),
         ('{"imports": {"lodash": "4.17.20"}}', [("lodash", "4.17.20")]),
         ('{"dependencies": {"lodash": "^4.17.20"}}', [("lodash", "4.17.20")]),
         ("lodash@4.17.20\njquery@3.4.0", [("lodash", "4.17.20"), ("jquery", "3.4.0")]),
-        ("lodash@4.17.20 lodash@4.17.20", [("lodash", "4.17.20")]),  # dedup
+        ("lodash@4.17.20 lodash@4.17.20", [("lodash", "4.17.20")]),
     ])
     def test_extract_dependencies(self, check, content, expected_deps):
         """_extract_dependencies correctly parses various formats and deduplicates."""
@@ -164,3 +219,299 @@ class TestOutdatedDepsCheck:
         """Malformed version strings return False (safe)."""
         result = check._version_matches_or_older(version, "1.0.0")
         assert result == False
+
+    @pytest.mark.asyncio
+    async def test_run_integration_vulnerable_version(self, check, recon, mock_httpx_client):
+        from vibeshield.models.recon import CrawledPage
+        recon.pages = [
+            CrawledPage(
+                url="https://example.com",
+                depth=0,
+                status_code=200,
+                content_type="text/html",
+                html='<script>lodash@4.17.20</script>',
+                headers={},
+                scripts=["https://example.com/lodash.js"],
+            )
+        ]
+        findings = await check.run(recon, mock_httpx_client)
+        assert len(findings) == 1
+        assert findings[0].check == "outdated_deps"
+        assert "lodash@4.17.20" in findings[0].title
+        assert findings[0].severity == "High"
+
+    @pytest.mark.asyncio
+    async def test_run_integration_safe_version(self, check, recon, mock_httpx_client):
+        from vibeshield.models.recon import CrawledPage
+        recon.pages = [
+            CrawledPage(
+                url="https://example.com",
+                depth=0,
+                status_code=200,
+                content_type="text/html",
+                html='<script>lodash@4.17.21</script>',
+                headers={},
+                scripts=["https://example.com/lodash.js"],
+            )
+        ]
+        findings = await check.run(recon, mock_httpx_client)
+        assert len(findings) == 0
+
+
+class TestFetchScripts:
+    """Tests for _fetch_scripts method."""
+
+    @pytest.fixture
+    def check(self):
+        return OutdatedDepsCheck()
+
+    @pytest.fixture
+    def recon(self):
+        return ReconData(
+            target_url="https://example.com",
+            base_url="https://example.com",
+            pages=[],
+        )
+
+    def make_response(self, status=200, text="<html><body></body></html>", headers=None):
+        from unittest.mock import MagicMock
+        mock = MagicMock()
+        mock.status_code = status
+        mock.text = text
+        mock.headers = headers or {"content-type": "text/html"}
+        if headers and "application/json" in headers.get("content-type", ""):
+            import json
+            try:
+                mock.json = MagicMock(return_value=json.loads(text) if text else {})
+            except Exception:
+                mock.json = MagicMock(return_value={})
+        else:
+            mock.json = MagicMock(return_value={})
+        return mock
+
+    class MockHTTPClient:
+        def __init__(self, responses=None):
+            self.responses = responses or {}
+            self.call_count = 0
+
+        def _normalize_url(self, url):
+            return url.rstrip('/')
+
+        async def get(self, url, **kwargs):
+            self.call_count += 1
+            normalized = self._normalize_url(url)
+            if normalized in self.responses:
+                return self.responses[normalized]
+            mock = MagicMock()
+            mock.status_code = 404
+            mock.text = "<html><body>Not Found</body></html>"
+            mock.headers = {"content-type": "text/html"}
+            mock.json = MagicMock(return_value={})
+            return mock
+
+        async def aclose(self):
+            pass
+
+    @pytest.fixture
+    def mock_http(self):
+        return self.MockHTTPClient()
+
+    @pytest.fixture
+    def recon(self):
+        from vibeshield.scanner.recon import Reconnaissance
+        from vibeshield.models.report import FingerprintResult
+        return ReconData(
+            target_url="https://example.com",
+            base_url="https://example.com",
+            pages=[],
+            fingerprint=FingerprintResult(js_bundles=["https://example.com/app.js", "https://example.com/vendor.js"]),
+        )
+
+    @pytest.mark.asyncio
+    async def test_fetch_scripts_success(self, check, recon, mock_http):
+        """_fetch_scripts successfully fetches and returns script content."""
+        mock_http.responses = {
+            "https://example.com": make_response(
+                text='<html><script src="/app.js"></script><script src="/vendor.js"></script></html>'
+            ),
+            "https://example.com/app.js": make_response(
+                status=200, text='console.log("app");', headers={"content-type": "application/javascript"}
+            ),
+            "https://example.com/vendor.js": make_response(
+                status=200, text='console.log("vendor");', headers={"content-type": "application/javascript"}
+            ),
+        }
+
+        scripts = await check._fetch_scripts(recon, mock_http)
+
+        assert len(scripts) == 2
+        assert 'console.log("app");' in scripts
+        assert 'console.log("vendor");' in scripts
+
+    @pytest.mark.asyncio
+    async def test_fetch_scripts_skips_non_200(self, check, recon, mock_http):
+        """Scripts returning non-200 are skipped."""
+        mock_http.responses = {
+            "https://example.com": make_response(
+                text='<html><script src="/app.js"></script></html>'
+            ),
+            "https://example.com/app.js": make_response(status=404, text="Not found"),
+        }
+
+        scripts = await check._fetch_scripts(ReconData(
+            target_url="https://example.com",
+            base_url="https://example.com",
+            pages=[]
+        ), mock_http)
+
+        assert scripts == []
+
+    @pytest.mark.asyncio
+    async def test_fetch_scripts_skips_non_html(self, check, recon, mock_http):
+        """Non-HTML responses are skipped."""
+        mock_http.responses = {
+            "https://example.com": make_response(
+                text='{"data": "json"}',
+                headers={"content-type": "application/json"}
+            ),
+        }
+
+        scripts = await check._fetch_scripts(ReconData(
+            target_url="https://example.com",
+            base_url="https://example.com",
+            pages=[]
+        ), self.MockHTTPClient())
+
+        assert scripts == []
+
+    @pytest.mark.asyncio
+    async def test_fetch_scripts_network_error(self, check, recon, mock_httpx_client):
+        """Network errors are gracefully handled."""
+        mock_http = self.MockHTTPClient()
+        mock_http.responses = {
+            "https://example.com": make_response(
+                text='<html><script src="/app.js"></script></html>'
+            ),
+        }
+
+        scripts = await check._fetch_scripts(ReconData(
+            target_url="https://example.com",
+            base_url="https://example.com",
+            pages=[]
+        ), self.MockHTTPClient())
+
+        assert scripts == []
+
+    @pytest.mark.asyncio
+    async def test_fetch_scripts_respects_limit(self, check, recon, mock_httpx_client):
+        """Only first 10 scripts are fetched."""
+        mock_http = self.MockHTTPClient()
+        mock_http.responses = {
+            "https://example.com": make_response(
+                text='<html>' + ''.join(f'<script src="/script{i}.js"></script>' for i in range(15)) + '</html>'
+            ),
+        }
+        for i in range(15):
+            mock_http.responses[f"https://example.com/script{i}.js"] = make_response(
+                status=200, text=f"console.log({i});", headers={"content-type": "application/javascript"}
+            )
+
+        from vibeshield.models.report import FingerprintResult
+        recon = ReconData(
+            target_url="https://example.com",
+            base_url="https://example.com",
+            pages=[CrawledPage(
+                url="https://example.com", depth=0, status_code=200, content_type="text/html",
+                html='<html>' + ''.join(f'<script src="/script{i}.js"></script>' for i in range(15)) + '</html>',
+                headers={},
+                scripts=[f"https://example.com/script{i}.js" for i in range(15)],
+            )],
+            fingerprint=FingerprintResult(js_bundles=[f"https://example.com/script{i}.js" for i in range(15)]),
+        )
+
+        scripts = await check._fetch_scripts(recon, mock_http)
+
+        assert len(scripts) == 10
+
+    # === Additional run() Integration Tests ===
+
+    @pytest.mark.asyncio
+    async def test_run_network_error_handled(self, check, recon, mock_httpx_client):
+        """Network errors during fetch are handled gracefully."""
+        from vibeshield.models.recon import CrawledPage
+
+        class FailingClient:
+            async def get(self, url, **kwargs):
+                raise Exception("Network error")
+            async def aclose(self):
+                pass
+
+        recon.pages = [CrawledPage(
+            url="https://example.com", depth=0, status_code=200, content_type="text/html",
+            html='<html><script src="/app.js"></script></body></html>', headers={},
+            scripts=["https://example.com/app.js"],
+        )]
+
+        findings = await check.run(recon, FailingClient())
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_run_with_multiple_js_bundles(self, check, recon):
+        """Multiple JS bundles are all checked for vulnerabilities."""
+        from vibeshield.models.recon import CrawledPage
+
+        recon.pages = [CrawledPage(
+            url="https://example.com", depth=0, status_code=200, content_type="text/html",
+            html='<script src="/app.js"></script><script src="/vendor.js"></script>',
+            headers={}, scripts=["https://example.com/app.js", "https://example.com/vendor.js"],
+        )]
+
+        class CustomClient:
+            def __init__(self):
+                self.responses = {
+                    "https://example.com/app.js": make_response(
+                        status=200, text="lodash@4.17.20", headers={"content-type": "application/javascript"}
+                    ),
+                    "https://example.com/vendor.js": make_response(
+                        status=200, text="jquery@3.4.0", headers={"content-type": "application/javascript"}
+                    ),
+                }
+
+            async def get(self, url, **kwargs):
+                normalized = url.rstrip('/')
+                if normalized in self.responses:
+                    return self.responses[normalized]
+                mock = MagicMock()
+                mock.status_code = 404
+                mock.text = "<html><body>Not Found</body></html>"
+                mock.headers = {"content-type": "text/html"}
+                mock.json = MagicMock(return_value={})
+                return mock
+
+            async def aclose(self):
+                pass
+
+        findings = await check.run(recon, CustomClient())
+        assert len(findings) == 2
+        titles = [f.title for f in findings]
+        assert "Outdated Dependency: lodash@4.17.20" in titles
+        assert "Outdated Dependency: jquery@3.4.0" in titles
+
+    @pytest.mark.asyncio
+    async def test_run_with_malformed_js_content(self, check, recon, mock_httpx_client):
+        """Malformed JS content doesn't crash the scanner."""
+        from vibeshield.models.recon import CrawledPage
+
+        recon.pages = [CrawledPage(
+            url="https://example.com", depth=0, status_code=200, content_type="text/html",
+            html='<script src="/app.js"></script>', headers={}, scripts=["https://example.com/app.js"],
+        )]
+
+        mock_httpx_client.responses = {
+            "https://example.com/app.js": make_response(
+                status=200, text="not valid javascript{{{", headers={"content-type": "application/javascript"}
+            ),
+        }
+
+        findings = await check.run(recon, mock_httpx_client)
+        assert findings == []
