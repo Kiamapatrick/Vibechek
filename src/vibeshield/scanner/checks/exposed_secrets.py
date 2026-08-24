@@ -9,8 +9,6 @@ from vibeshield.utils.patterns import SECRET_PATTERNS
 class ExposedSecretsCheck(BaseCheck):
     name = "exposed_secrets"
     description = "Detects API keys, tokens, and credentials exposed in client-side JavaScript"
-    wstg_id = ""
-    attck_ids = []
 
     async def run(self, recon: ReconData, http: HTTPClient) -> list[Finding]:
         findings = []

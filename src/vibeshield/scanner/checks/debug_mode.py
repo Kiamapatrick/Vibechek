@@ -1,4 +1,5 @@
 import re
+from typing import ClassVar
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
@@ -12,10 +13,8 @@ from vibeshield.utils.patterns import DEBUG_ENDPOINTS
 class DebugModeCheck(BaseCheck):
     name = "debug_mode"
     description = "Detects debug mode, verbose errors, and exposed debug endpoints"
-    wstg_id = ""
-    attck_ids = []
 
-    ERROR_PATTERNS = [
+    ERROR_PATTERNS: ClassVar[list[tuple[re.Pattern, str]]] = [
         (re.compile(r"(?i)stack trace|traceback|at\s+\w+\.\w+\("), "Stack trace in response"),
         (re.compile(r"(?i)file\s+\"[^\"]+\",\s+line\s+\d+"), "Source code path disclosure"),
         (re.compile(r"(?i)exception|error\s+in\s+/"), "Verbose error message"),
@@ -23,7 +22,7 @@ class DebugModeCheck(BaseCheck):
         (re.compile(r"(?i)webpack|__webpack_require__|module\.exports"), "Source map / bundle internals"),
     ]
 
-    DEBUG_ENDPOINTS = DEBUG_ENDPOINTS
+    DEBUG_ENDPOINTS: ClassVar[list[str]] = DEBUG_ENDPOINTS
 
     async def run(self, recon: ReconData, http: HTTPClient) -> list[Finding]:
         findings = []

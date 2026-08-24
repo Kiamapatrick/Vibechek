@@ -1,4 +1,5 @@
 import re
+from typing import ClassVar
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
@@ -11,10 +12,8 @@ from vibeshield.utils.http import HTTPClient
 class UnprotectedRoutesCheck(BaseCheck):
     name = "unprotected_routes"
     description = "Detects API routes that should require authentication but don't"
-    wstg_id = ""
-    attck_ids = []
 
-    API_PATH_PATTERNS = [
+    API_PATH_PATTERNS: ClassVar[list[str]] = [
         r"/api/",
         r"/graphql",
         r"/rest/",
@@ -28,7 +27,7 @@ class UnprotectedRoutesCheck(BaseCheck):
         r"/admin",
     ]
 
-    SENSITIVE_RESPONSE_PATTERNS = [
+    SENSITIVE_RESPONSE_PATTERNS: ClassVar[list[str]] = [
         r"(?i)(user|account|profile|email|id|token|session)",
         r"(?i)(orders|purchases|billing|payment)",
         r"(?i)(admin|dashboard|analytics)",

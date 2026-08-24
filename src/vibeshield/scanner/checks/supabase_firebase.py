@@ -11,8 +11,6 @@ from vibeshield.utils.http import HTTPClient
 class SupabaseFirebaseCheck(BaseCheck):
     name = "supabase_firebase"
     description = "Detects Supabase/Firebase misconfigurations allowing unauthorized data access"
-    wstg_id = ""
-    attck_ids = []
 
     # Class attribute for hasattr() check in engine - enables write tests when set via CLI flag
     allow_write_tests: bool = False

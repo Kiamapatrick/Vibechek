@@ -9,8 +9,6 @@ from vibeshield.utils.http import HTTPClient
 class CORSCheck(BaseCheck):
     name = "cors"
     description = "Detects permissive CORS configurations allowing unauthorized cross-origin requests"
-    wstg_id = ""
-    attck_ids = []
 
     EVIL_ORIGIN = "https://evil.com"
 

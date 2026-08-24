@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
 from vibeshield.scanner.checks.base import BaseCheck
@@ -9,10 +11,8 @@ from vibeshield.utils.http import HTTPClient
 class SecurityHeadersCheck(BaseCheck):
     name = "security_headers"
     description = "Checks for missing security headers (CSP, HSTS, X-Frame-Options, etc.)"
-    wstg_id = ""
-    attck_ids = []
 
-    REQUIRED_HEADERS = {
+    REQUIRED_HEADERS: ClassVar[dict[str, dict[str, str | int]]] = {
         "content-security-policy": {
             "severity": "Medium",
             "impact": 3,

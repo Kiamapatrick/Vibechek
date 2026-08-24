@@ -1,5 +1,6 @@
 import asyncio
 import re
+from typing import ClassVar
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
@@ -12,10 +13,8 @@ from vibeshield.utils.http import HTTPClient
 class RateLimitingCheck(BaseCheck):
     name = "rate_limiting"
     description = "Detects missing rate limiting on authentication endpoints"
-    wstg_id = ""
-    attck_ids = []
 
-    AUTH_PATH_PATTERNS = [
+    AUTH_PATH_PATTERNS: ClassVar[list[str]] = [
         r"/api/auth/",
         r"/auth/",
         r"/login",
@@ -49,7 +48,7 @@ class RateLimitingCheck(BaseCheck):
 
     # Denylist patterns for endpoints that should NOT be rate-limit tested
     # (POSTing to these could create accounts, send reset emails, etc.)
-    DENYLIST_PATTERNS = [
+    DENYLIST_PATTERNS: ClassVar[list[str]] = [
         r"signup",
         r"register",
         r"create.?account",

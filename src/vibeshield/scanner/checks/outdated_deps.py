@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
 from vibeshield.scanner.checks.base import BaseCheck
@@ -10,10 +12,8 @@ from vibeshield.utils.patterns import VERSION_PATTERNS
 class OutdatedDepsCheck(BaseCheck):
     name = "outdated_deps"
     description = "Detects client-side libraries with known CVEs via version fingerprinting"
-    wstg_id = ""
-    attck_ids = []
 
-    KNOWN_VULNS = {
+    KNOWN_VULNS: ClassVar[dict[str, dict[str, list[str]]]] = {
         "lodash": {
             "4.17.20": ["CVE-2021-23337", "CVE-2020-28500"],
             "4.17.19": ["CVE-2020-28500"],
