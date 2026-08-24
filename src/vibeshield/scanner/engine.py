@@ -1,5 +1,5 @@
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from vibeshield.config import settings
 from vibeshield.models.finding import Finding, SeverityLevel
@@ -47,7 +47,7 @@ class ScannerEngine:
 
         scan_metadata = ScanMetadata(
             target=self.target_url,
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             version=settings.VERSION,
             duration_ms=duration_ms,
             crawl_depth=self.max_depth,

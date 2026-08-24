@@ -1,5 +1,4 @@
 import re
-import json
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData

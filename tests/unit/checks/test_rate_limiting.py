@@ -1,9 +1,10 @@
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from vibeshield.scanner.checks.rate_limiting import RateLimitingCheck
-from vibeshield.models.recon import ReconData, CrawledPage
+
 from vibeshield.models.finding import SeverityLevel
-from vibeshield.utils.http import HTTPClient
+from vibeshield.models.recon import CrawledPage, ReconData
+from vibeshield.scanner.checks.rate_limiting import RateLimitingCheck
 
 
 class MockHTTPClient:
@@ -318,7 +319,6 @@ class TestRateLimitingCheck:
         # So 5 x 401 = 5 successful = 100% > 60% = finding should be created
         # But the test expects no finding... let me check
         # Actually the test should verify the behavior
-        pass
 
     @pytest.mark.asyncio
     async def test_network_errors_handled(self, check, recon, mock_http):

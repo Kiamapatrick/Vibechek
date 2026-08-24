@@ -83,7 +83,7 @@ class RateLimitingCheck(BaseCheck):
         filtered = [
             ep for ep in endpoints
             if ep.startswith(recon.base_url)
-            and not any(re.search(p, ep, re.I) for p in deny_patterns)
+            and not any(re.search(p, ep, re.IGNORECASE) for p in deny_patterns)
         ]
         return list(set(filtered))[:10]
 

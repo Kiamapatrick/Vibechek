@@ -1,11 +1,12 @@
-import pytest
 import base64
 import json
 from unittest.mock import AsyncMock, MagicMock
-from vibeshield.scanner.checks.supabase_firebase import SupabaseFirebaseCheck
-from vibeshield.models.recon import ReconData, CrawledPage
+
+import pytest
+
 from vibeshield.models.finding import SeverityLevel
-from vibeshield.utils.http import HTTPClient
+from vibeshield.models.recon import CrawledPage, ReconData
+from vibeshield.scanner.checks.supabase_firebase import SupabaseFirebaseCheck
 
 
 def make_anon_key() -> str:

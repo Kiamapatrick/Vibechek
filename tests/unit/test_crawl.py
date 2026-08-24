@@ -1,9 +1,10 @@
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+
+from vibeshield.models.recon import FingerprintResult, ReconData
 from vibeshield.scanner.crawl import Crawler
 from vibeshield.scanner.recon import Reconnaissance
-from vibeshield.models.recon import CrawledPage, ReconData, FingerprintResult
-from vibeshield.utils.http import HTTPClient
 
 
 class MockHTTPClient:

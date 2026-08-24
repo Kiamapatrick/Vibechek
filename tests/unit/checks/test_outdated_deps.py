@@ -1,9 +1,9 @@
-import pytest
-from vibeshield.scanner.checks.outdated_deps import OutdatedDepsCheck
-from vibeshield.models.recon import ReconData, CrawledPage
-from tests.conftest import mock_httpx_client
 from unittest.mock import MagicMock
-import pytest_asyncio
+
+import pytest
+
+from vibeshield.models.recon import CrawledPage, ReconData
+from vibeshield.scanner.checks.outdated_deps import OutdatedDepsCheck
 
 
 def make_response(status=200, text="<html><body></body></html>", headers=None):
@@ -318,7 +318,6 @@ class TestFetchScripts:
 
     @pytest.fixture
     def recon(self):
-        from vibeshield.scanner.recon import Reconnaissance
         from vibeshield.models.report import FingerprintResult
         return ReconData(
             target_url="https://example.com",

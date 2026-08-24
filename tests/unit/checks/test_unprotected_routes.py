@@ -1,9 +1,10 @@
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from vibeshield.scanner.checks.unprotected_routes import UnprotectedRoutesCheck
-from vibeshield.models.recon import ReconData, CrawledPage
+
 from vibeshield.models.finding import SeverityLevel
-from vibeshield.utils.http import HTTPClient
+from vibeshield.models.recon import CrawledPage, ReconData
+from vibeshield.scanner.checks.unprotected_routes import UnprotectedRoutesCheck
 
 
 class MockHTTPClient:

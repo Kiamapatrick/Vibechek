@@ -1,13 +1,19 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
-from typer.testing import CliRunner
-from vibeshield.cli import app
-from vibeshield.scanner.engine import ScannerEngine
-from vibeshield.models.report import PlainReport, JSONReport, ScanMetadata, Summary, FingerprintResult
-from vibeshield.models.finding import Finding, SeverityLevel, Evidence
-from vibeshield.models.recon import ReconData
 
+import pytest
+from typer.testing import CliRunner
+
+from vibeshield.cli import app
+from vibeshield.models.finding import Finding, SeverityLevel
+from vibeshield.models.recon import ReconData
+from vibeshield.models.report import (
+    FingerprintResult,
+    JSONReport,
+    PlainReport,
+    ScanMetadata,
+    Summary,
+)
+from vibeshield.scanner.engine import ScannerEngine
 
 runner = CliRunner()
 
@@ -87,10 +93,10 @@ class TestCLI:
         mock_plain_reporter.generate.assert_called_once()
 
     def test_scan_with_allow_write_tests_passes_to_engine(self, mock_engine_class, mock_plain_reporter, mock_json_reporter):
-        mock_class, engine_instance = mock_engine_class
-        
+        mock_class, _ = mock_engine_class
+    
         result = runner.invoke(app, ["scan", "http://example.com", "--confirm-ownership", "--allow-write-tests"])
-        
+    
         assert result.exit_code == 0
         call_kwargs = mock_class.call_args.kwargs
         assert call_kwargs["allow_write_tests"] is True
@@ -139,7 +145,7 @@ class TestCLI:
         assert '{"findings": []}' in content
 
     def test_scan_custom_max_pages_max_depth_timeout(self, mock_engine_class, mock_plain_reporter, mock_json_reporter):
-        mock_class, engine_instance = mock_engine_class
+        mock_class, _ = mock_engine_class
         
         result = runner.invoke(app, [
             "scan", "http://example.com", "--confirm-ownership",
@@ -153,7 +159,7 @@ class TestCLI:
         assert call_kwargs["timeout"] == 30.0
 
     def test_scan_exit_code_critical(self, mock_engine_class, mock_plain_reporter, mock_json_reporter):
-        mock_class, engine_instance = mock_engine_class
+        _, engine_instance = mock_engine_class
         
         plain_report = PlainReport(
             scan_metadata=ScanMetadata(
@@ -189,7 +195,7 @@ class TestCLI:
         assert result.exit_code == 2
 
     def test_scan_exit_code_high(self, mock_engine_class, mock_plain_reporter, mock_json_reporter):
-        mock_class, engine_instance = mock_engine_class
+        _, engine_instance = mock_engine_class
         
         plain_report = PlainReport(
             scan_metadata=ScanMetadata(
@@ -230,7 +236,7 @@ class TestCLI:
         assert result.exit_code == 0
 
     def test_scan_keyboard_interrupt(self, mock_engine_class):
-        mock_class, engine_instance = mock_engine_class
+        _, engine_instance = mock_engine_class
         engine_instance.run.side_effect = KeyboardInterrupt()
         
         result = runner.invoke(app, ["scan", "http://example.com", "--confirm-ownership"])
@@ -239,7 +245,7 @@ class TestCLI:
         assert "interrupted" in result.output.lower()
 
     def test_scan_exception_handled(self, mock_engine_class):
-        mock_class, engine_instance = mock_engine_class
+        _, engine_instance = mock_engine_class
         engine_instance.run.side_effect = Exception("Scan failed")
         
         result = runner.invoke(app, ["scan", "http://example.com", "--confirm-ownership"])
@@ -287,8 +293,8 @@ class TestScannerEngine:
 
     @pytest.mark.asyncio
     async def test_engine_runs_reconnaissance(self, mock_http_client, mock_reconnaissance):
-        mock_http_class, http_client = mock_http_client
-        mock_recon_class, recon_instance, recon_data = mock_reconnaissance
+        _, http_client = mock_http_client
+        mock_recon_class, recon_instance, _ = mock_reconnaissance
         
         mock_check_class, _ = self.make_mock_check_class()
         
@@ -305,8 +311,8 @@ class TestScannerEngine:
 
     @pytest.mark.asyncio
     async def test_engine_runs_all_checks(self, mock_http_client, mock_reconnaissance):
-        mock_http_class, http_client = mock_http_client
-        mock_recon_class, recon_instance, recon_data = mock_reconnaissance
+        _, http_client = mock_http_client
+        _, _, recon_data = mock_reconnaissance
         
         mock_check_class, mock_check_instance = self.make_mock_check_class()
         
@@ -319,8 +325,8 @@ class TestScannerEngine:
 
     @pytest.mark.asyncio
     async def test_engine_passes_allow_write_tests_to_checks(self, mock_http_client, mock_reconnaissance):
-        mock_http_class, http_client = mock_http_client
-        mock_recon_class, recon_instance, recon_data = mock_reconnaissance
+        _, _ = mock_http_client
+        _, _, _ = mock_reconnaissance
         
         mock_check_class, mock_check_instance = self.make_mock_check_class()
         
@@ -332,8 +338,8 @@ class TestScannerEngine:
 
     @pytest.mark.asyncio
     async def test_engine_sorts_findings_by_severity_and_score(self, mock_http_client, mock_reconnaissance):
-        mock_http_class, http_client = mock_http_client
-        mock_recon_class, recon_instance, recon_data = mock_reconnaissance
+        _, _ = mock_http_client
+        _, _, _ = mock_reconnaissance
         
         finding_low = Finding(
             id="low", check="test", title="Low", severity=SeverityLevel.LOW,
@@ -354,11 +360,11 @@ class TestScannerEngine:
             wstg_id="WSTG-TEST", attck_ids=["T1234"]
         )
         
-        mock_check_class, mock_check_instance = self.make_mock_check_class([finding_low, finding_high, finding_critical])
+        mock_check_class, _ = self.make_mock_check_class([finding_low, finding_high, finding_critical])
         
         with patch("vibeshield.scanner.engine.ALL_CHECKS", [mock_check_class]):
             engine = ScannerEngine(target_url="http://example.com")
-            plain_report, json_report = await engine.run()
+            plain_report, _ = await engine.run()
         
         findings = plain_report.findings
         assert findings[0].severity == SeverityLevel.CRITICAL
@@ -367,8 +373,8 @@ class TestScannerEngine:
 
     @pytest.mark.asyncio
     async def test_engine_calculates_severity_for_findings_without_wstg(self, mock_http_client, mock_reconnaissance):
-        mock_http_class, http_client = mock_http_client
-        mock_recon_class, recon_instance, recon_data = mock_reconnaissance
+        _, _ = mock_http_client
+        _, _, _ = mock_reconnaissance
         
         finding_no_wstg = Finding(
             id="test", check="test", title="Test", severity=SeverityLevel.INFO,
@@ -377,7 +383,7 @@ class TestScannerEngine:
             wstg_id=None, attck_ids=[]
         )
         
-        mock_check_class, mock_check_instance = self.make_mock_check_class([finding_no_wstg])
+        mock_check_class, _ = self.make_mock_check_class([finding_no_wstg])
         
         with patch("vibeshield.scanner.engine.ALL_CHECKS", [mock_check_class]):
             engine = ScannerEngine(target_url="http://example.com")
@@ -388,8 +394,8 @@ class TestScannerEngine:
 
     @pytest.mark.asyncio
     async def test_engine_builds_scan_metadata(self, mock_http_client, mock_reconnaissance):
-        mock_http_class, http_client = mock_http_client
-        mock_recon_class, recon_instance, recon_data = mock_reconnaissance
+        _, _ = mock_http_client
+        _, _, recon_data = mock_reconnaissance
         recon_data.pages = [MagicMock(), MagicMock()]
         
         mock_check_class, _ = self.make_mock_check_class()
@@ -401,7 +407,7 @@ class TestScannerEngine:
                 max_pages=50,
                 timeout=15.0
             )
-            plain_report, json_report = await engine.run()
+            plain_report, _ = await engine.run()
         
         metadata = plain_report.scan_metadata
         assert metadata.target == "http://example.com"
@@ -413,8 +419,8 @@ class TestScannerEngine:
 
     @pytest.mark.asyncio
     async def test_engine_builds_summary(self, mock_http_client, mock_reconnaissance):
-        mock_http_class, http_client = mock_http_client
-        mock_recon_class, recon_instance, recon_data = mock_reconnaissance
+        _, _ = mock_http_client
+        _, _, _ = mock_reconnaissance
         
         findings = [
             Finding(id="1", check="c1", title="C1", severity=SeverityLevel.CRITICAL, score=20, impact=5, likelihood=4, confidence=0.9, remediation="", references=[], evidence=None, wstg_id="WSTG-TEST", attck_ids=["T1234"]),
@@ -425,7 +431,7 @@ class TestScannerEngine:
             Finding(id="6", check="c6", title="C6", severity=SeverityLevel.INFO, score=2, impact=1, likelihood=2, confidence=0.9, remediation="", references=[], evidence=None, wstg_id="WSTG-TEST", attck_ids=["T1234"]),
         ]
         
-        mock_check_class, mock_check_instance = self.make_mock_check_class(findings)
+        mock_check_class, _ = self.make_mock_check_class(findings)
         
         with patch("vibeshield.scanner.engine.ALL_CHECKS", [mock_check_class]):
             engine = ScannerEngine(target_url="http://example.com")
@@ -440,13 +446,13 @@ class TestScannerEngine:
 
     @pytest.mark.asyncio
     async def test_engine_handles_check_exception_gracefully(self, mock_http_client, mock_reconnaissance):
-        mock_http_class, http_client = mock_http_client
-        mock_recon_class, recon_instance, recon_data = mock_reconnaissance
+        _, _ = mock_http_client
+        _, _, _ = mock_reconnaissance
         
-        mock_check_class1, mock_check_instance1 = self.make_mock_check_class()
-        mock_check_instance1.run.side_effect = Exception("Check failed")
+        mock_check_class1, _ = self.make_mock_check_class()
+        mock_check_class1.return_value.run.side_effect = Exception("Check failed")
         
-        mock_check_class2, mock_check_instance2 = self.make_mock_check_class()
+        mock_check_class2, _ = self.make_mock_check_class()
         
         with patch("vibeshield.scanner.engine.ALL_CHECKS", [mock_check_class1, mock_check_class2]):
             engine = ScannerEngine(target_url="http://example.com")
@@ -456,8 +462,8 @@ class TestScannerEngine:
 
     @pytest.mark.asyncio
     async def test_engine_uses_custom_parameters(self, mock_http_client, mock_reconnaissance):
-        mock_http_class, http_client = mock_http_client
-        mock_recon_class, recon_instance, recon_data = mock_reconnaissance
+        mock_http_class, _ = mock_http_client
+        mock_recon_class, _, _ = mock_reconnaissance
         
         mock_check_class, _ = self.make_mock_check_class()
         
