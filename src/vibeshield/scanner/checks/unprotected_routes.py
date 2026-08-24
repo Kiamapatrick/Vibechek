@@ -62,6 +62,11 @@ class UnprotectedRoutesCheck(BaseCheck):
                 if any(re.search(p, script) for p in self.API_PATH_PATTERNS):
                     endpoints.add(script)
 
+            for form in page.forms:
+                action = form.get("action", "")
+                if action and any(re.search(p, action) for p in self.API_PATH_PATTERNS):
+                    endpoints.add(action)
+
         endpoints.update(recon.get_api_endpoints())
 
         filtered = []
