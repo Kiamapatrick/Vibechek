@@ -42,18 +42,6 @@ class MockHTTPClient:
         mock.json = MagicMock(return_value={})
         return mock
 
-    async def get(self, url, **kwargs):
-        self.call_count += 1
-        normalized = self._normalize_url(url)
-        if normalized in self.responses:
-            return self.responses[normalized]
-        mock = MagicMock()
-        mock.status_code = 404
-        mock.text = "<html><body>Not Found</body></html>"
-        mock.headers = {"content-type": "text/html"}
-        mock.json = MagicMock(return_value={})
-        return mock
-
     async def aclose(self):
         pass
 
@@ -264,14 +252,6 @@ class TestFetchScripts:
     @pytest.fixture
     def check(self):
         return OutdatedDepsCheck()
-
-    @pytest.fixture
-    def recon(self):
-        return ReconData(
-            target_url="https://example.com",
-            base_url="https://example.com",
-            pages=[],
-        )
 
     def make_response(self, status=200, text="<html><body></body></html>", headers=None):
         from unittest.mock import MagicMock

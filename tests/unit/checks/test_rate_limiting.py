@@ -87,6 +87,41 @@ class TestRateLimitingCheck:
 
     @pytest.fixture
     def mock_http(self):
+        class MockHTTPClient:
+            def __init__(self, responses=None):
+                self.responses = responses or {}
+                self.call_count = 0
+
+            def _normalize_url(self, url):
+                return url.rstrip('/')
+
+            async def post(self, url, **kwargs):
+                self.call_count += 1
+                normalized = self._normalize_url(url)
+                if normalized in self.responses:
+                    return self.responses[normalized]
+                mock = MagicMock()
+                mock.status_code = 404
+                mock.text = "<html><body>Not Found</body></html>"
+                mock.headers = {"content-type": "text/html"}
+                mock.json = MagicMock(return_value={})
+                return mock
+
+            async def get(self, url, **kwargs):
+                self.call_count += 1
+                normalized = self._normalize_url(url)
+                if normalized in self.responses:
+                    return self.responses[normalized]
+                mock = MagicMock()
+                mock.status_code = 404
+                mock.text = "<html><body>Not Found</body></html>"
+                mock.headers = {"content-type": "text/html"}
+                mock.json = MagicMock(return_value={})
+                return mock
+
+            async def aclose(self):
+                pass
+
         return MockHTTPClient()
 
     # === Endpoint Identification Tests ===
@@ -147,112 +182,6 @@ class TestRateLimitingCheck:
         assert "https://external.com/api/auth/login" not in endpoints
 
     # === Rate Limiting Test Tests ===
-
-    @pytest.fixture
-    def check(self):
-        return RateLimitingCheck()
-
-    @pytest.fixture
-    def recon(self):
-        return ReconData(
-            target_url="https://example.com",
-            base_url="https://example.com",
-            pages=[
-                CrawledPage(
-                    url="https://example.com",
-                    depth=0,
-                    status_code=200,
-                    content_type="text/html",
-                    html="<html><body>Home</body></html>",
-                    headers={},
-                    links=["https://example.com/api/auth/login"],
-                    scripts=[],
-                    forms=[{
-                        "action": "https://example.com/api/auth/login",
-                        "method": "POST",
-                        "inputs": [{"name": "email"}, {"name": "password"}],
-                    }],
-                )
-            ],
-        )
-
-    @pytest.fixture
-    def mock_http(self):
-        class MockHTTPClient:
-            def __init__(self, responses=None):
-                self.responses = responses or {}
-                self.call_count = 0
-
-            def _normalize_url(self, url):
-                return url.rstrip('/')
-
-            async def post(self, url, **kwargs):
-                self.call_count += 1
-                normalized = self._normalize_url(url)
-                if normalized in self.responses:
-                    return self.responses[normalized]
-                mock = MagicMock()
-                mock.status_code = 404
-                mock.text = "<html><body>Not Found</body></html>"
-                mock.headers = {"content-type": "text/html"}
-                mock.json = MagicMock(return_value={})
-                return mock
-
-            async def get(self, url, **kwargs):
-                self.call_count += 1
-                normalized = self._normalize_url(url)
-                if normalized in self.responses:
-                    return self.responses[normalized]
-                mock = MagicMock()
-                mock.status_code = 404
-                mock.text = "<html><body>Not Found</body></html>"
-                mock.headers = {"content-type": "text/html"}
-                mock.json = MagicMock(return_value={})
-                return mock
-
-            async def aclose(self):
-                pass
-
-        return MockHTTPClient()
-
-    @pytest.fixture
-    def mock_http(self):
-        class MockHTTPClient:
-            def __init__(self, responses=None):
-                self.responses = responses or {}
-                self.call_count = 0
-
-            def _normalize_url(self, url):
-                return url.rstrip('/')
-
-            async def post(self, url, **kwargs):
-                self.call_count += 1
-                normalized = self._normalize_url(url)
-                if normalized in self.responses:
-                    return self.responses[normalized]
-                mock = MagicMock()
-                mock.status_code = 404
-                mock.text = "<html><body>Not Found</body></html>"
-                mock.headers = {"content-type": "text/html"}
-                mock.json = MagicMock(return_value={})
-                return mock
-
-            async def get(self, url, **kwargs):
-                self.call_count += 1
-                normalized = self._normalize_url(url)
-                if normalized in self.responses:
-                    return self.responses[normalized]
-                mock = MagicMock()
-                mock.status_code = 404
-                mock.text = "<html><body>Not Found</body></html>"
-                mock.headers = {"content-type": "text/html"}
-                mock.json = MagicMock(return_value={})
-                return mock
-
-            async def aclose(self):
-                pass
-
-        return MockHTTPClient()
 
     @pytest.mark.asyncio
     async def test_rate_limit_detected(self, check, recon, mock_http):
