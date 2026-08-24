@@ -87,3 +87,14 @@ class TestSupabaseFirebaseCheck:
         findings = await check._check_supabase(anon_key, recon, supabase_mock_http)
         
         assert len(findings) == 0
+
+    @pytest.mark.asyncio
+    async def test_post_not_called_when_no_read_bypass_and_flag_off(self, supabase_mock_http, recon, anon_key):
+        """GET falls through every table AND flag is off -> POST must never fire."""
+        check = SupabaseFirebaseCheck()
+        check.allow_write_tests = False
+        supabase_mock_http.get.return_value = MagicMock(status_code=404, text="null", headers={})
+
+        await check._check_supabase(anon_key, recon, supabase_mock_http)
+
+        supabase_mock_http.post.assert_not_called()
