@@ -21,5 +21,10 @@ _settings: TriageSettings | None = None
 def get_settings() -> TriageSettings:
     global _settings
     if _settings is None:
-        _settings = TriageSettings()
+        # pydantic-settings loads required fields (e.g. groq_api_key) from the
+        # environment/.env at runtime; mypy can't see through BaseSettings' dynamic
+        # __init__, so it wrongly treats env-sourced fields as missing constructor
+        # args. Verified: raises ValidationError when GROQ_API_KEY is genuinely
+        # unset, loads correctly when it is.
+        _settings = TriageSettings()  # type: ignore[call-arg]
     return _settings

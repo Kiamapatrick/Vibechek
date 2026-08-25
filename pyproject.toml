@@ -23,6 +23,8 @@ dependencies = [
     "rich>=13.7",
     "tenacity>=8.2",
     "packaging>=23.2",
+    "groq>=0.11",
+    "pydantic-settings>=2.5",
 ]
 [project.optional-dependencies]
 dev = [
@@ -55,6 +57,11 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["rank_bm25.*", "scipy.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
