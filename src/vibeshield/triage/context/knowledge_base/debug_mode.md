@@ -66,5 +66,5 @@ module.exports = {
 - Strip source maps from production builds or host them privately (Sentry, Datadog)
 
 ## WSTG / ATT&CK mapping
-- WSTG: IG04 - Enumerate Applications on Webserver, SM01 - Testing for Bypassing Authorization Schema
-- ATT&CK: T1590 (Active Scanning), T1083 (File and Directory Discovery)
+- WSTG: WSTG-INFO-02
+- ATT&CK: T1592.002

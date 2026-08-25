@@ -48,5 +48,5 @@ async def cors_middleware(request, call_next):
 - Supabase: Dashboard → API → CORS settings → add exact origins
 
 ## WSTG / ATT&CK mapping
-- WSTG: CT07 - Testing Cross-Origin Resource Sharing
-- ATT&CK: T1550 (Use Alternate Authentication Material), T1190 (Exploit Public-Facing Application)
+- WSTG: WSTG-CONF-06
+- ATT&CK: T1190

@@ -45,5 +45,5 @@ Supply chain attacks are increasing. A single vulnerable dependency (e.g., `loda
    - Pin dependencies to exact versions (not `^` or `~`) in production lockfile
 
 ## WSTG / ATT&CK mapping
-- WSTG: CM03 - Testing for Vulnerable Components
-- ATT&CK: T1195.001 (Supply Chain Compromise: Compromise Software Dependencies), T1190 (Exploit Public-Facing Application)
+- WSTG: WSTG-CONF-06
+- ATT&CK: T1190

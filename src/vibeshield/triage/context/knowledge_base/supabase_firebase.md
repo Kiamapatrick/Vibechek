@@ -56,5 +56,5 @@ Supabase anon keys and Firebase configs are *meant* to be public. The security m
 3. Test in Firebase Console → Rules simulator
 
 ## WSTG / ATT&CK mapping
-- WSTG: AT02 - Testing for Authorization Bypass
-- ATT&CK: T1213 (Data from Information Repositories), T1530 (Data from Cloud Storage)
+- WSTG: WSTG-ATHZ-02
+- ATT&CK: T1213

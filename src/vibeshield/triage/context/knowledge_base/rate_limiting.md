@@ -85,5 +85,5 @@ location /api/auth/login {
 **Supabase:** Dashboard → Auth → Rate Limits → enable and configure
 
 ## WSTG / ATT&CK mapping
-- WSTG: AT01 - Testing for Authentication Schema, AT03 - Testing for Password Guessing
-- ATT&CK: T1110 (Brute Force), T1110.004 (Credential Stuffing)
+- WSTG: WSTG-ATHN-01
+- ATT&CK: T1110.001, T1110.003

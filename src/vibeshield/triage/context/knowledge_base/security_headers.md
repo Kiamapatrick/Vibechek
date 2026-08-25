@@ -52,5 +52,5 @@ Permissions-Policy: geolocation=(), microphone=(), camera=()
 - Next.js: `poweredByHeader: false` in `next.config.js`
 
 ## WSTG / ATT&CK mapping
-- WSTG: CT01 - Testing for Client-Side Cross-Site Scripting
-- ATT&CK: T1190 (Exploit Public-Facing Application), T1550 (Use Alternate Authentication Material)
+- WSTG: WSTG-CONF-06
+- ATT&CK: T1598.001

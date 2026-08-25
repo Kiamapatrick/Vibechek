@@ -36,5 +36,5 @@ Modern frameworks (Next.js, Remix, Astro, SvelteKit) make it easy to create API 
 3. **Test**: Automated check in CI that hits protected endpoints without auth → expects 401/403
 
 ## WSTG / ATT&CK mapping
-- WSTG: AT01 - Testing Directory Traversal/File Include, AT02 - Testing Authorization Bypass
-- ATT&CK: T1552 (Unsecured Credentials), T1005 (Data from Local System)
+- WSTG: WSTG-ATHZ-01
+- ATT&CK: T1190

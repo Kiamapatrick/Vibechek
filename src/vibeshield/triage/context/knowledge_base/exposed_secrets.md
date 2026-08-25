@@ -30,5 +30,5 @@ Any secret in client-side code is fully exposed to anyone who views the page sou
 4. **Prevention**: Add secret scanning to CI (GitHub Secret Scanning, TruffleHog, git-secrets), use `.gitignore` for `.env*`, never commit secrets
 
 ## WSTG / ATT&CK mapping
-- WSTG: A07:2021 - Identification and Authentication Failures
-- ATT&CK: T1552 (Unsecured Credentials), T1530 (Data from Cloud Storage)
+- WSTG: WSTG-INFO-02
+- ATT&CK: T1552.001
