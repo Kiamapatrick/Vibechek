@@ -1,0 +1,1 @@
+# vibeshield.triage.eval - Evaluation harness for triage quality
