@@ -1,5 +1,7 @@
 import logging
 
+from httpx import Response
+
 from vibeshield.models.finding import Evidence, Finding
 from vibeshield.models.recon import ReconData
 from vibeshield.scanner.checks.base import BaseCheck
@@ -49,7 +51,7 @@ class ExposedSecretsCheck(BaseCheck):
 
         return findings
 
-    def _scan_content(self, content: str, source_url: str, resp: HTTPClient | None) -> list[Finding]:
+    def _scan_content(self, content: str, source_url: str, resp: Response | None) -> list[Finding]:
         findings = []
         for pattern_name, pattern in SECRET_PATTERNS:
             for match in pattern.finditer(content):
@@ -124,7 +126,7 @@ class ExposedSecretsCheck(BaseCheck):
             "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",
         ]
 
-    def _create_env_finding(self, path: str, resp: HTTPClient) -> Finding:
+    def _create_env_finding(self, path: str, resp: Response) -> Finding:
         evidence = Evidence(
             url=f"{resp.url}",
             snippet=resp.text[:200],

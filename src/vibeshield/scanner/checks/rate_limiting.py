@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import re
-from typing import ClassVar
+from typing import ClassVar, TypedDict
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
@@ -11,6 +11,13 @@ from vibeshield.scanner.tagging import apply_tags_to_findings
 from vibeshield.utils.http import HTTPClient
 
 log = logging.getLogger(__name__)
+
+
+class RateLimitResult(TypedDict, total=False):
+    status: int
+    headers: dict[str, str]
+    text: str
+    error: str
 
 
 class RateLimitingCheck(BaseCheck):
@@ -90,7 +97,7 @@ class RateLimitingCheck(BaseCheck):
         return list(set(filtered))[:10]
 
     async def _test_rate_limiting(self, url: str, recon: ReconData, http: HTTPClient) -> Finding | None:
-        results = []
+        results: list[RateLimitResult] = []
 
         for i in range(self.TEST_ATTEMPTS):
             try:

@@ -1,7 +1,7 @@
 from typing import ClassVar
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
-from vibeshield.models.recon import ReconData
+from vibeshield.models.recon import CrawledPage, ReconData
 from vibeshield.scanner.checks.base import BaseCheck
 from vibeshield.scanner.scoring import calculate_severity
 from vibeshield.scanner.tagging import apply_tags_to_findings
@@ -64,7 +64,7 @@ class SecurityHeadersCheck(BaseCheck):
         apply_tags_to_findings(findings, self.__class__.__name__)
         return findings
 
-    def _check_headers(self, url: str, headers: dict, page) -> list[Finding]:
+    def _check_headers(self, url: str, headers: dict[str, str], page: CrawledPage) -> list[Finding]:
         findings = []
         csp_header = headers.get("content-security-policy") or headers.get("content-security-policy-report-only")
 
@@ -92,20 +92,22 @@ class SecurityHeadersCheck(BaseCheck):
             return False
         return "frame-ancestors" in csp.lower()
 
-    def _create_finding(self, url: str, header_name: str, config: dict, page) -> Finding:
+    def _create_finding(self, url: str, header_name: str, config: dict[str, str | int], page: CrawledPage) -> Finding:
         evidence = Evidence(
             url=url,
             snippet=f"Missing header: {header_name}",
             response_status=page.status_code,
             response_headers=page.headers,
         )
+        impact = int(config["impact"])
+        likelihood = int(config["likelihood"])
         return Finding(
             check=self.name,
             title=f"Missing Security Header: {header_name.upper()}",
             severity=SeverityLevel.MEDIUM,
-            score=config["impact"] * config["likelihood"],
-            impact=config["impact"],
-            likelihood=config["likelihood"],
+            score=impact * likelihood,
+            impact=impact,
+            likelihood=likelihood,
             wstg_id="",
             attck_ids=[],
             evidence=evidence,
@@ -114,7 +116,7 @@ class SecurityHeadersCheck(BaseCheck):
             references=self._get_references(header_name),
         )
 
-    def _create_csp_frame_ancestors_finding(self, url: str, csp: str, page) -> Finding:
+    def _create_csp_frame_ancestors_finding(self, url: str, csp: str, page: CrawledPage) -> Finding:
         evidence = Evidence(
             url=url,
             snippet=f"CSP missing frame-ancestors: {csp[:200]}",
@@ -138,7 +140,7 @@ class SecurityHeadersCheck(BaseCheck):
             ],
         )
 
-    def _create_info_disclosure_finding(self, url: str, server: str, x_powered_by: str, page) -> Finding:
+    def _create_info_disclosure_finding(self, url: str, server: str, x_powered_by: str, page: CrawledPage) -> Finding:
         details = []
         if server:
             details.append(f"Server: {server}")

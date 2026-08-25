@@ -67,27 +67,38 @@ class Crawler:
 
                 links = []
                 for a in soup.find_all("a", href=True):
-                    href = a["href"]
+                    href = a.get("href")
+                    if not isinstance(href, str):
+                        continue
                     normalized = self._normalize_url(href)
                     if normalized and self._is_same_origin(normalized):
                         links.append(normalized)
 
                 scripts = []
                 for script in soup.find_all("script", src=True):
-                    src = script["src"]
+                    src = script.get("src")
+                    if not isinstance(src, str):
+                        continue
                     normalized = self._normalize_url(src)
                     if normalized:
                         scripts.append(normalized)
 
                 forms = []
                 for form in soup.find_all("form"):
-                    action = form.get("action", "")
-                    method = form.get("method", "GET").upper()
+                    action = form.get("action")
+                    if not isinstance(action, str):
+                        action = ""
+                    method = form.get("method")
+                    if not isinstance(method, str):
+                        method = "GET"
+                    method = method.upper()
                     inputs = []
                     for inp in form.find_all(["input", "textarea", "select"]):
+                        name = inp.get("name")
+                        input_type = inp.get("type")
                         inputs.append({
-                            "name": inp.get("name"),
-                            "type": inp.get("type"),
+                            "name": name if isinstance(name, str) else None,
+                            "type": input_type if isinstance(input_type, str) else None,
                             "required": inp.has_attr("required"),
                         })
                     forms.append({

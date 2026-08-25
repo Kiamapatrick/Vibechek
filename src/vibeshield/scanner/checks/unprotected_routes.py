@@ -2,6 +2,8 @@ import logging
 import re
 from typing import ClassVar
 
+import httpx
+
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
 from vibeshield.scanner.checks.base import BaseCheck
@@ -136,7 +138,7 @@ class UnprotectedRoutesCheck(BaseCheck):
             re.search(p, content) for p in self.SENSITIVE_RESPONSE_PATTERNS
         )
 
-    def _has_auth_indicators(self, resp) -> bool:
+    def _has_auth_indicators(self, resp: httpx.Response) -> bool:
         set_cookie = resp.headers.get("set-cookie", "")
         if "session" in set_cookie.lower() or "auth" in set_cookie.lower():
             return True

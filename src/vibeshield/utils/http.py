@@ -1,4 +1,5 @@
-from typing import Self
+import types
+from typing import Any, Self
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -26,7 +27,7 @@ class HTTPClient:
         )
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None) -> None:
         if self._client:
             await self._client.aclose()
 
@@ -42,7 +43,7 @@ class HTTPClient:
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
         reraise=True,
     )
-    async def get(self, url: str, **kwargs) -> httpx.Response:
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
         return await self.client.get(url, **kwargs)
 
     @retry(
@@ -51,7 +52,7 @@ class HTTPClient:
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
         reraise=True,
     )
-    async def post(self, url: str, **kwargs) -> httpx.Response:
+    async def post(self, url: str, **kwargs: Any) -> httpx.Response:
         return await self.client.post(url, **kwargs)
 
     @retry(
@@ -60,7 +61,7 @@ class HTTPClient:
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
         reraise=True,
     )
-    async def head(self, url: str, **kwargs) -> httpx.Response:
+    async def head(self, url: str, **kwargs: Any) -> httpx.Response:
         return await self.client.head(url, **kwargs)
 
     @retry(
@@ -69,7 +70,7 @@ class HTTPClient:
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
         reraise=True,
     )
-    async def options(self, url: str, **kwargs) -> httpx.Response:
+    async def options(self, url: str, **kwargs: Any) -> httpx.Response:
         return await self.client.options(url, **kwargs)
 
     async def get_text(self, url: str) -> str | None:
@@ -80,10 +81,10 @@ class HTTPClient:
         except httpx.HTTPError:
             return None
 
-    async def get_json(self, url: str) -> dict | None:
+    async def get_json(self, url: str) -> dict[str, Any] | None:
         try:
             resp = await self.get(url, headers={"Accept": "application/json"})
             resp.raise_for_status()
-            return resp.json()
+            return resp.json()  # type: ignore[no-any-return]
         except (httpx.HTTPError, ValueError):
             return None

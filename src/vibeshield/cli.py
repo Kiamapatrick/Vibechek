@@ -20,7 +20,7 @@ app = typer.Typer(
 console = Console()
 
 
-def version_callback(value: bool):
+def version_callback(value: bool) -> None:
     if value:
         console.print(f"VibeShield v{settings.VERSION}")
         raise typer.Exit()
@@ -36,7 +36,7 @@ def main(
         False, "--verbose", "-v",
         help="Enable verbose logging (DEBUG level)",
     ),
-):
+) -> None:
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.WARNING,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -58,7 +58,7 @@ def scan(
         "plain", "--output", "-o",
         help="Output format: plain, json, or both",
     ),
-    output_file: Path | None = typer.Option(
+    output_file: Path | None = typer.Option(  # noqa: B008
         None, "--output-file", "-f",
         help="Write report to file instead of stdout",
     ),
@@ -74,7 +74,7 @@ def scan(
         settings.DEFAULT_MAX_DEPTH, "--max-depth",
         help="Maximum crawl depth",
     ),
-):
+) -> None:
     """
     Scan a deployed web application for common vibe-coding security issues.
 

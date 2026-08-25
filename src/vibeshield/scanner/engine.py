@@ -87,7 +87,7 @@ class ScannerEngine:
         all_findings = []
 
         for check_class in ALL_CHECKS:
-            check = check_class()
+            check = check_class()  # type: ignore
             # Pass allow_write_tests to checks that declare it
             if hasattr(check, "allow_write_tests"):
                 check.allow_write_tests = self.allow_write_tests

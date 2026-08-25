@@ -124,7 +124,7 @@ class DebugModeCheck(BaseCheck):
         return findings
 
     def _check_source_maps(self, recon: ReconData) -> list[Finding]:
-        findings = []
+        findings: list[Finding] = []
         for page in recon.pages:
             for script in page.scripts:
                 if script.endswith(".js"):

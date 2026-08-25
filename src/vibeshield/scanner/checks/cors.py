@@ -1,5 +1,7 @@
 import logging
 
+from httpx import Response
+
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.models.recon import ReconData
 from vibeshield.scanner.checks.base import BaseCheck
@@ -119,7 +121,7 @@ class CORSCheck(BaseCheck):
         return None
 
     def _create_finding(
-        self, url: str, acao: str, acac: str, resp,
+        self, url: str, acao: str, acac: str, resp: Response,
         title: str, severity: SeverityLevel, impact: int, likelihood: int, remediation: str
     ) -> Finding:
         evidence = Evidence(

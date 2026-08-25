@@ -18,7 +18,7 @@ class SupabaseFirebaseCheck(BaseCheck):
     # Class attribute for hasattr() check in engine - enables write tests when set via CLI flag
     allow_write_tests: bool = False
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.supabase_key_pattern = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
         self.firebase_config_pattern = re.compile(
