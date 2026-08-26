@@ -30,7 +30,13 @@ class PromptTemplate:
         )
 
 
-# TriageResult JSON schema for the LLM to follow
+# TriageResult JSON schema for the LLM to follow.
+# NOTE: this is documentation/reference only — it is NOT passed to the Groq
+# API. The client uses response_format={"type": "json_object"} (loose JSON
+# mode), not json_schema/strict mode, since schema-enforced structured output
+# support varies across Groq's hosted models. The fields below are instead
+# manually described in prose in USER_TEMPLATE. If you change this schema,
+# update USER_TEMPLATE to match — they are not linked programmatically.
 TRIAGE_RESULT_SCHEMA = {
     "type": "object",
     "properties": {
