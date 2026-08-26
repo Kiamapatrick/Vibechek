@@ -13,7 +13,7 @@ def load_kb(kb_dir: Path | None = None) -> dict[str, str]:
         raise FileNotFoundError(f"Knowledge base directory not found: {target_dir}")
 
     kb: dict[str, str] = {}
-    for md_file in target_dir.glob("*.md"):
+    for md_file in sorted(target_dir.glob("*.md")):
         topic = md_file.stem
         kb[topic] = md_file.read_text(encoding="utf-8")
     return kb
@@ -21,4 +21,4 @@ def load_kb(kb_dir: Path | None = None) -> dict[str, str]:
 
 def get_kb_topics(kb_dir: Path | None = None) -> list[str]:
     """Return list of available knowledge base topics."""
-    return list(load_kb(kb_dir).keys())
+    return sorted(load_kb(kb_dir).keys())
