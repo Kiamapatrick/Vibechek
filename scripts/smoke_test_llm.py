@@ -16,10 +16,20 @@ import re
 import sys
 from typing import Any
 
+from groq import APIConnectionError, APITimeoutError, GroqError, RateLimitError
+
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.triage.context.retriever import get_retriever
 from vibeshield.triage.llm.client import GroqClient
 from vibeshield.triage.models import ContextSnippet
+
+# Mirrors vibeshield.triage.llm.client._RETRYABLE_ERRORS: the transient error
+# types GroqClient retries internally. Because GroqClient's retry decorator
+# uses reraise=True, exhausting retries re-raises the *original* exception
+# type here, not a wrapping tenacity.RetryError — so we check for these
+# specific types directly rather than string-matching on "RetryError" or
+# "max retries" (which the real exception message won't necessarily contain).
+_RETRYABLE_ERROR_TYPES = (RateLimitError, APITimeoutError, APIConnectionError)
 
 KB_KEY_TERMS = {
     "supabase_firebase": ["RLS", "anon key", "Row Level Security", "Supabase Dashboard"],
@@ -222,26 +232,27 @@ def main() -> int:
                 context = snippets
                 kb_terms = extract_kb_terms("\n".join(s.content for s in snippets), finding.check)
             except (ValueError, RuntimeError, OSError) as e:
-                print(f"Finding {idx}/5: {tc['name']} ({tc['tier']}) — KB retrieval failed: {e}")
+                print(f"Finding {idx}/{len(TEST_CASES)}: {tc['name']} ({tc['tier']}) — KB retrieval failed: {e}")
                 kb_terms = []
         else:
             kb_terms = []
 
-        print(f"Finding {idx}/5: {tc['name']} ({tc['tier']})" + (" — with KB context" if tc["use_kb"] else ""))
+        print(f"Finding {idx}/{len(TEST_CASES)}: {tc['name']} ({tc['tier']})" + (" — with KB context" if tc["use_kb"] else ""))
 
         try:
             runs = run_finding_twice(client, finding, context)
-        except (RuntimeError, ValueError, OSError) as e:
-            if "RetryError" in type(e).__name__ or "max retries" in str(e).lower():
-                retry_exhausted_count += 1
-                if idx == 1:
-                    first_finding_retry_exhausted = True
-                print(f"  RETRY EXHAUSTED: {e}")
-                continue
-            else:
-                print(f"  ERROR: {e}")
-                validation_failures += 1
-                continue
+        except _RETRYABLE_ERROR_TYPES as e:
+            retry_exhausted_count += 1
+            if idx == 1:
+                first_finding_retry_exhausted = True
+            print(f"  RETRY EXHAUSTED: {type(e).__name__}: {e}")
+            print()
+            continue
+        except (GroqError, RuntimeError, ValueError, OSError) as e:
+            print(f"  ERROR: {type(e).__name__}: {e}")
+            validation_failures += 1
+            print()
+            continue
 
         for run_idx, run in enumerate(runs, 1):
             if not all(k in run for k in ("explanation", "exploitability", "fix", "revised_priority")):
