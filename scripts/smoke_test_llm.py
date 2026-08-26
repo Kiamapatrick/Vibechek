@@ -155,9 +155,9 @@ def check_consistency(runs: list[dict[str, Any]]) -> tuple[bool, str]:
     r1, r2 = runs[0], runs[1]
     expl_same = r1["exploitability"] == r2["exploitability"]
     pri_same = r1["revised_priority"] == r2["revised_priority"]
-    expl_msg = "same \u2713" if expl_same else f"DIFFERENT ({r1['exploitability']} vs {r2['exploitability']}) \u2717"
-    pri_msg = "same \u2713" if pri_same else f"DIFFERENT ({r1['revised_priority']} vs {r2['revised_priority']}) \u2717"
-    msg = f"\u0394 exploitability: {expl_msg}, revised_priority: {pri_msg}"
+    expl_msg = "same OK" if expl_same else f"DIFFERENT ({r1['exploitability']} vs {r2['exploitability']}) FAIL"
+    pri_msg = "same OK" if pri_same else f"DIFFERENT ({r1['revised_priority']} vs {r2['revised_priority']}) FAIL"
+    msg = f"Delta exploitability: {expl_msg}, revised_priority: {pri_msg}"
     return expl_same and pri_same, msg
 
 
@@ -170,7 +170,7 @@ def check_calibration(runs: list[dict[str, Any]], expected_expl: set[int], expec
     pri_in = pri in expected_pri
 
     if expl_in and pri_in:
-        return f"PASS (exploitability∈{sorted(expected_expl)}, revised_priority∈{sorted(expected_pri)})", 0
+        return f"PASS (exploitability in {sorted(expected_expl)}, revised_priority in {sorted(expected_pri)})", 0
 
     expl_sign = 0
     if expl < min(expected_expl):
@@ -186,7 +186,7 @@ def check_calibration(runs: list[dict[str, Any]], expected_expl: set[int], expec
 
     sign = expl_sign if expl_sign != 0 else pri_sign
     direction = "higher" if sign > 0 else "lower"
-    return f"expected expl∈{sorted(expected_expl)} pri∈{sorted(expected_pri)}, got expl={expl} pri={pri} — OUTSIDE ({direction}) (informational)", sign
+    return f"expected expl in {sorted(expected_expl)} pri in {sorted(expected_pri)}, got expl={expl} pri={pri} -- OUTSIDE ({direction}) (informational)", sign
 
 
 def main() -> int:
@@ -204,6 +204,7 @@ def main() -> int:
 
     validation_failures = 0
     calibration_signs = []
+    calibration_passes = 0
     consistency_passes = 0
     kb_term_counts = []
     retry_exhausted_count = 0
@@ -267,6 +268,8 @@ def main() -> int:
             print(f"  Calibration: {cal_msg}")
             if sign != 0:
                 calibration_signs.append(sign)
+            else:
+                calibration_passes += 1
 
             if tc["use_kb"] and kb_terms:
                 output_text = runs[0]["explanation"] + " " + runs[0]["fix"]
@@ -279,8 +282,7 @@ def main() -> int:
     print("SUMMARY:")
     print(f"  Valid JSON: {len(TEST_CASES) - validation_failures}/{len(TEST_CASES)}")
     print(f"  Consistency: {consistency_passes}/{len(TEST_CASES)}")
-    cal_passes = len([s for s in calibration_signs if s == 0])
-    print(f"  Calibration PASS: {cal_passes}/{len(TEST_CASES)}")
+    print(f"  Calibration PASS: {calibration_passes}/{len(TEST_CASES)}")
     if kb_term_counts:
         total_matched = sum(m for m, _ in kb_term_counts)
         total_terms = sum(t for _, t in kb_term_counts)
