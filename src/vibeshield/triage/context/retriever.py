@@ -72,6 +72,8 @@ _retriever: BM25Retriever | None = None
 def get_retriever(kb_dir: Path | None = None) -> BM25Retriever:
     """Get or create the global BM25Retriever instance."""
     global _retriever
+    if kb_dir is not None:
+        return BM25Retriever(kb_dir)  # custom dir: never cache, always fresh
     if _retriever is None:
-        _retriever = BM25Retriever(kb_dir)
+        _retriever = BM25Retriever()
     return _retriever
