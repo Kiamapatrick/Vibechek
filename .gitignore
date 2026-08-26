@@ -10,6 +10,7 @@ dist/
 build/
 *.egg-info/
 .env
+UI_PLAN.md
 .vscode/
 .idea/
 *.log
