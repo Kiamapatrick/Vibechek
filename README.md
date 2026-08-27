@@ -261,6 +261,8 @@ ruff check src tests
 mypy src
 ```
 
+> **Note for eval harness:** The triage evaluation golden set (`src/vibeshield/triage/eval/golden.json`) contains `real_scan` entries bootstrapped from a specific frozen report at `tests/fixtures/golden_report.json`. Re-running `vibeshield scan` generates new random `finding.id` values — to evaluate against the golden set, generate triage results from that exact frozen report, not a fresh scan. See `scripts/bootstrap_golden.py` for details.
+
 ## Architecture
 
 ```mermaid

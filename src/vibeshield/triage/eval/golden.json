@@ -1,32 +1,92 @@
 [
   {
-    "finding_id": "finding-0ff7312d",
-    "source": "real_scan",
-    "human_rank": 1,
-    "human_notes": "CORS wildcard with credentials on API - should rank critical"
-  },
-  {
     "finding_id": "finding-6a617277",
     "source": "real_scan",
-    "human_rank": 2,
-    "human_notes": "Exposed AWS keys in client bundle - should rank very high"
+    "human_rank": 1,
+    "human_notes": "Exposed AWS access key + Stripe key in client bundle.js — immediate credential compromise, highest real-world impact"
   },
   {
     "finding_id": "finding-5ed754e0",
     "source": "real_scan",
+    "human_rank": 2,
+    "human_notes": "Unprotected /api/admin returns admin user records with secret field — direct data breach of privileged accounts"
+  },
+  {
+    "finding_id": "finding-f6b59289",
+    "source": "real_scan",
     "human_rank": 3,
-    "human_notes": "Unprotected /api/admin endpoint returning user data - should rank high"
+    "human_notes": "CORS wildcard + credentials on /api/admin — any origin can make authenticated requests to admin endpoint"
+  },
+  {
+    "finding_id": "finding-0ff7312d",
+    "source": "real_scan",
+    "human_rank": 4,
+    "human_notes": "CORS wildcard + credentials on /api/auth/login — allows credentialed cross-origin requests to login endpoint"
+  },
+  {
+    "finding_id": "finding-b2ec831f",
+    "source": "real_scan",
+    "human_rank": 5,
+    "human_notes": "CORS wildcard + credentials on /api/users — allows credentialed cross-origin requests to user data endpoint"
   },
   {
     "finding_id": "finding-c0c3270b",
     "source": "real_scan",
-    "human_rank": 4,
-    "human_notes": "Unprotected /api/users endpoint returning user data - should rank high"
+    "human_rank": 6,
+    "human_notes": "Unprotected /api/users returns user emails — data breach but less sensitive than admin endpoint"
+  },
+  {
+    "finding_id": "finding-8c7f144d",
+    "source": "real_scan",
+    "human_rank": 7,
+    "human_notes": "No rate limiting on /api/auth/login — enables brute-force credential guessing, requires sustained attack"
   },
   {
     "finding_id": "finding-35af6ad4",
     "source": "real_scan",
-    "human_rank": 5,
-    "human_notes": "Missing CSP header on static page - should rank medium/low"
+    "human_rank": 8,
+    "human_notes": "Missing CSP header — primary defense against XSS, defense-in-depth but high value if XSS exists elsewhere"
+  },
+  {
+    "finding_id": "finding-7b75e969",
+    "source": "real_scan",
+    "human_rank": 9,
+    "human_notes": "Missing HSTS header — allows SSL stripping/downgrade attacks on HTTPS site"
+  },
+  {
+    "finding_id": "finding-40b04863",
+    "source": "real_scan",
+    "human_rank": 10,
+    "human_notes": "Missing X-Frame-Options — enables clickjacking, medium impact depending on page sensitivity"
+  },
+  {
+    "finding_id": "finding-caf9df89",
+    "source": "real_scan",
+    "human_rank": 11,
+    "human_notes": "Missing X-Content-Type-Options — MIME sniffing risk, low but exploitable with other flaws"
+  },
+  {
+    "finding_id": "finding-3810d067",
+    "source": "real_scan",
+    "human_rank": 12,
+    "human_notes": "Accessible JS source map (.map) — could expose source code, low confidence (0.5) and low direct impact"
+  },
+  {
+    "finding_id": "finding-971625ef",
+    "source": "real_scan",
+    "human_rank": 13,
+    "human_notes": "Missing Referrer-Policy — referrer leakage on cross-origin navigations, privacy/info disclosure"
+  },
+  {
+    "finding_id": "finding-8fbf2118",
+    "source": "real_scan",
+    "human_rank": 14,
+    "human_notes": "Missing Permissions-Policy — no control over browser features (geolocation, camera, etc.), low practical risk"
+  },
+  {
+    "finding_id": "finding-1cfbfd87",
+    "source": "real_scan",
+    "human_rank": 15,
+    "human_notes": "Server version disclosure (BaseHTTP/0.6 Python/3.14.0) — information leakage only, minimal direct risk"
   }
 ]

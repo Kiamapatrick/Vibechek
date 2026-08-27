@@ -7,6 +7,11 @@ Usage:
 Reads a JSON report, extracts finding IDs, and updates golden.json
 with real_scan entries (preserving any existing synthetic entries).
 Human_rank and human_notes are left as null/empty for manual labeling.
+
+IMPORTANT: The real_scan bucket only stays valid if triage results are
+generated from the exact report this was bootstrapped from — a fresh
+scan will produce new random IDs in finding.id and orphan these labels.
+The canonical frozen report is committed at tests/fixtures/golden_report.json.
 """
 
 import json
@@ -28,7 +33,7 @@ def main() -> None:
     
     findings = load_report(report_path)
     
-    golden_path = Path(__file__).parent.parent / "vibeshield" / "triage" / "eval" / "golden.json"
+    golden_path = Path(__file__).parent.parent / "src" / "vibeshield" / "triage" / "eval" / "golden.json"
     
     # Load existing golden.json to preserve synthetic entries
     existing = []

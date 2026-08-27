@@ -1,0 +1,522 @@
+{
+  "scan_metadata": {
+    "target": "http://localhost:8080",
+    "timestamp": "2026-08-27T08:35:32.446477Z",
+    "version": "1.0.0",
+    "duration_ms": 10285,
+    "crawl_depth": 2,
+    "max_pages": 10,
+    "pages_crawled": 1,
+    "checks_run": [
+      "ExposedSecretsCheck",
+      "SupabaseFirebaseCheck",
+      "UnprotectedRoutesCheck",
+      "SecurityHeadersCheck",
+      "CORSCheck",
+      "DebugModeCheck",
+      "OutdatedDepsCheck",
+      "RateLimitingCheck"
+    ]
+  },
+  "fingerprint": {
+    "framework": null,
+    "framework_version": null,
+    "baas": [],
+    "technologies": [],
+    "headers": {
+      "server": "BaseHTTP/0.6 Python/3.14.0",
+      "date": "Thu, 27 Aug 2026 08:35:22 GMT",
+      "content-type": "text/html"
+    },
+    "js_bundles": [
+      "http://localhost:8080/bundle.js"
+    ],
+    "api_endpoints": [
+      "http://localhost:8080/api/auth/login",
+      "http://localhost:8080/api/users",
+      "http://localhost:8080/api/admin"
+    ]
+  },
+  "findings": [
+    {
+      "id": "finding-6a617277",
+      "check": "exposed_secrets",
+      "title": "Exposed Aws Access Key",
+      "severity": "Critical",
+      "score": 20,
+      "impact": 5,
+      "likelihood": 4,
+      "wstg_id": "WSTG-INFO-02",
+      "attck_ids": [
+        "T1552.001"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080/bundle.js",
+        "snippet": " const AWS_KEY = \"AKIA1234567890ABCDEF\"; const STRIPE_KEY = \"sk_test_1234567890abcdef\"; ",
+        "matched_pattern": "AKIA1234567890ABCDEF",
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:23 GMT",
+          "content-type": "application/javascript"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.9,
+      "remediation": "Rotate key immediately in AWS IAM. Move to server-side environment variable.",
+      "references": [
+        "https://owasp.org/www-project-top-ten/2021/A07_2021-Identification_and_Authentication_Failures",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "finding-5ed754e0",
+      "check": "unprotected_routes",
+      "title": "Unprotected API Endpoint: /api/admin",
+      "severity": "Critical",
+      "score": 20,
+      "impact": 5,
+      "likelihood": 4,
+      "wstg_id": "WSTG-ATHZ-01",
+      "attck_ids": [
+        "T1190"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080/api/admin",
+        "snippet": "[{\"id\":1,\"email\":\"admin@example.com\",\"secret\":\"data\"}]",
+        "matched_pattern": null,
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:25 GMT",
+          "content-type": "application/json"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.7,
+      "remediation": "Add authentication middleware to this route. In Next.js: export const middleware = authMiddleware; In Express: app.use('/api/', requireAuth); In Supabase: ensure RLS policies require auth.",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/01-Testing_Directory_Traversal_File_Include",
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/02-Testing_Authorization_Bypass"
+      ]
+    },
+    {
+      "id": "finding-0ff7312d",
+      "check": "cors",
+      "title": "CORS allows credentials with wildcard origin (*)",
+      "severity": "Critical",
+      "score": 20,
+      "impact": 5,
+      "likelihood": 4,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1190"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080/api/auth/login",
+        "snippet": "ACAO: *, ACAC: true",
+        "matched_pattern": null,
+        "request_headers": {
+          "Origin": "https://evil.com"
+        },
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:26 GMT",
+          "access-control-allow-origin": "*",
+          "access-control-allow-credentials": "true",
+          "access-control-allow-methods": "GET, POST, OPTIONS",
+          "access-control-allow-headers": "Content-Type"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.9,
+      "remediation": "Never use Access-Control-Allow-Origin: * with Access-Control-Allow-Credentials: true. Specify exact allowed origins instead.",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/07-Testing_Cross_Origin_Resource_Sharing",
+        "https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS"
+      ]
+    },
+    {
+      "id": "finding-b2ec831f",
+      "check": "cors",
+      "title": "CORS allows credentials with wildcard origin (*)",
+      "severity": "Critical",
+      "score": 20,
+      "impact": 5,
+      "likelihood": 4,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1190"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080/api/users",
+        "snippet": "ACAO: *, ACAC: true",
+        "matched_pattern": null,
+        "request_headers": {
+          "Origin": "https://evil.com"
+        },
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:26 GMT",
+          "access-control-allow-origin": "*",
+          "access-control-allow-credentials": "true",
+          "access-control-allow-methods": "GET, POST, OPTIONS",
+          "access-control-allow-headers": "Content-Type"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.9,
+      "remediation": "Never use Access-Control-Allow-Origin: * with Access-Control-Allow-Credentials: true. Specify exact allowed origins instead.",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/07-Testing_Cross_Origin_Resource_Sharing",
+        "https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS"
+      ]
+    },
+    {
+      "id": "finding-f6b59289",
+      "check": "cors",
+      "title": "CORS allows credentials with wildcard origin (*)",
+      "severity": "Critical",
+      "score": 20,
+      "impact": 5,
+      "likelihood": 4,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1190"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080/api/admin",
+        "snippet": "ACAO: *, ACAC: true",
+        "matched_pattern": null,
+        "request_headers": {
+          "Origin": "https://evil.com"
+        },
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:26 GMT",
+          "access-control-allow-origin": "*",
+          "access-control-allow-credentials": "true",
+          "access-control-allow-methods": "GET, POST, OPTIONS",
+          "access-control-allow-headers": "Content-Type"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.9,
+      "remediation": "Never use Access-Control-Allow-Origin: * with Access-Control-Allow-Credentials: true. Specify exact allowed origins instead.",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/07-Testing_Cross_Origin_Resource_Sharing",
+        "https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS"
+      ]
+    },
+    {
+      "id": "finding-c0c3270b",
+      "check": "unprotected_routes",
+      "title": "Unprotected API Endpoint: /api/users",
+      "severity": "High",
+      "score": 16,
+      "impact": 4,
+      "likelihood": 4,
+      "wstg_id": "WSTG-ATHZ-01",
+      "attck_ids": [
+        "T1190"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080/api/users",
+        "snippet": "[{\"id\":1,\"email\":\"user@example.com\"}]",
+        "matched_pattern": null,
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:25 GMT",
+          "content-type": "application/json"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.7,
+      "remediation": "Add authentication middleware to this route. In Next.js: export const middleware = authMiddleware; In Express: app.use('/api/', requireAuth); In Supabase: ensure RLS policies require auth.",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/01-Testing_Directory_Traversal_File_Include",
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/02-Testing_Authorization_Bypass"
+      ]
+    },
+    {
+      "id": "finding-8c7f144d",
+      "check": "rate_limiting",
+      "title": "No Rate Limiting on Auth Endpoint: /api/auth/login",
+      "severity": "High",
+      "score": 16,
+      "impact": 4,
+      "likelihood": 4,
+      "wstg_id": "WSTG-ATHN-01",
+      "attck_ids": [
+        "T1110.001",
+        "T1110.003"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080/api/auth/login",
+        "snippet": "5/5 requests succeeded without rate limiting",
+        "matched_pattern": null,
+        "request_headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:32 GMT",
+          "content-type": "application/json"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.8,
+      "remediation": "Implement rate limiting on auth endpoints. Next.js: Use @upstash/ratelimit or custom middleware. Express: Use express-rate-limit. Nginx: limit_req_zone. Supabase: Enable rate limiting in dashboard. Recommended: 5 requests/minute for login, 10/hour for signup.",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/01-Testing_Authentication_Schema",
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/03-Testing_for_Password_Guessing"
+      ]
+    },
+    {
+      "id": "finding-35af6ad4",
+      "check": "security_headers",
+      "title": "Missing Security Header: CONTENT-SECURITY-POLICY",
+      "severity": "Medium",
+      "score": 9,
+      "impact": 3,
+      "likelihood": 3,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1598.001"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080",
+        "snippet": "Missing header: content-security-policy",
+        "matched_pattern": null,
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:22 GMT",
+          "content-type": "text/html"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.95,
+      "remediation": "Add CSP header. Start with: Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';",
+      "references": [
+        "https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP",
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/01-Testing_for_Client_Side_Cross_Site_Scripting"
+      ]
+    },
+    {
+      "id": "finding-7b75e969",
+      "check": "security_headers",
+      "title": "Missing Security Header: STRICT-TRANSPORT-SECURITY",
+      "severity": "Medium",
+      "score": 9,
+      "impact": 3,
+      "likelihood": 3,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1598.001"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080",
+        "snippet": "Missing header: strict-transport-security",
+        "matched_pattern": null,
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:22 GMT",
+          "content-type": "text/html"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.95,
+      "remediation": "Add HSTS header: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+      "references": [
+        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security"
+      ]
+    },
+    {
+      "id": "finding-40b04863",
+      "check": "security_headers",
+      "title": "Missing Security Header: X-FRAME-OPTIONS",
+      "severity": "Medium",
+      "score": 6,
+      "impact": 2,
+      "likelihood": 3,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1598.001"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080",
+        "snippet": "Missing header: x-frame-options",
+        "matched_pattern": null,
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:22 GMT",
+          "content-type": "text/html"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.95,
+      "remediation": "Add X-Frame-Options: DENY (or SAMEORIGIN if you need framing)",
+      "references": [
+        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options"
+      ]
+    },
+    {
+      "id": "finding-caf9df89",
+      "check": "security_headers",
+      "title": "Missing Security Header: X-CONTENT-TYPE-OPTIONS",
+      "severity": "Low",
+      "score": 4,
+      "impact": 2,
+      "likelihood": 2,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1598.001"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080",
+        "snippet": "Missing header: x-content-type-options",
+        "matched_pattern": null,
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:22 GMT",
+          "content-type": "text/html"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.95,
+      "remediation": "Add X-Content-Type-Options: nosniff",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/01-Testing_for_Client_Side_Cross_Site_Scripting"
+      ]
+    },
+    {
+      "id": "finding-3810d067",
+      "check": "debug_mode",
+      "title": "Accessible JavaScript Source Map",
+      "severity": "Low",
+      "score": 4,
+      "impact": 2,
+      "likelihood": 2,
+      "wstg_id": "WSTG-INFO-02",
+      "attck_ids": [
+        "T1592.002"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080/bundle.js.map",
+        "snippet": "Source map file (.map) potentially accessible",
+        "matched_pattern": ".map",
+        "request_headers": {},
+        "response_headers": {},
+        "response_status": null
+      },
+      "confidence": 0.5,
+      "remediation": "Disable source map generation in production builds. Next.js: Set productionBrowserSourceMaps: false in next.config.js. Webpack: Set devtool: false in production.",
+      "references": [
+        "https://webpack.js.org/configuration/devtool/",
+        "https://nextjs.org/docs/architecture/nextjs-compiler#source-maps"
+      ]
+    },
+    {
+      "id": "finding-971625ef",
+      "check": "security_headers",
+      "title": "Missing Security Header: REFERRER-POLICY",
+      "severity": "Info",
+      "score": 2,
+      "impact": 1,
+      "likelihood": 2,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1598.001"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080",
+        "snippet": "Missing header: referrer-policy",
+        "matched_pattern": null,
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:22 GMT",
+          "content-type": "text/html"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.95,
+      "remediation": "Add Referrer-Policy: strict-origin-when-cross-origin",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/01-Testing_for_Client_Side_Cross_Site_Scripting"
+      ]
+    },
+    {
+      "id": "finding-8fbf2118",
+      "check": "security_headers",
+      "title": "Missing Security Header: PERMISSIONS-POLICY",
+      "severity": "Info",
+      "score": 2,
+      "impact": 1,
+      "likelihood": 2,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1598.001"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080",
+        "snippet": "Missing header: permissions-policy",
+        "matched_pattern": null,
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:22 GMT",
+          "content-type": "text/html"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.95,
+      "remediation": "Add Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/01-Testing_for_Client_Side_Cross_Site_Scripting"
+      ]
+    },
+    {
+      "id": "finding-1cfbfd87",
+      "check": "security_headers",
+      "title": "Server Version Disclosure",
+      "severity": "Info",
+      "score": 2,
+      "impact": 1,
+      "likelihood": 2,
+      "wstg_id": "WSTG-CONF-06",
+      "attck_ids": [
+        "T1598.001"
+      ],
+      "evidence": {
+        "url": "http://localhost:8080",
+        "snippet": "Server: BaseHTTP/0.6 Python/3.14.0",
+        "matched_pattern": null,
+        "request_headers": {},
+        "response_headers": {
+          "server": "BaseHTTP/0.6 Python/3.14.0",
+          "date": "Thu, 27 Aug 2026 08:35:22 GMT",
+          "content-type": "text/html"
+        },
+        "response_status": 200
+      },
+      "confidence": 0.9,
+      "remediation": "Remove or obfuscate Server and X-Powered-By headers. In Nginx: server_tokens off; In Express: app.disable('x-powered-by')",
+      "references": [
+        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/02-Fingerprint_Web_Server"
+      ]
+    }
+  ],
+  "summary": {
+    "critical": 5,
+    "high": 2,
+    "medium": 3,
+    "low": 2,
+    "info": 3
+  }
+}
