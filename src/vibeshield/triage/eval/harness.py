@@ -1,5 +1,4 @@
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -7,17 +6,6 @@ from scipy.stats import spearmanr
 
 from vibeshield.models.finding import Finding
 from vibeshield.triage.models import TriageResult
-
-
-@dataclass
-class EvalResult:
-    spearman_rho: float | None
-    spearman_p: float | None
-    mean_rubric_score: float | None
-    pass_rate: float | None
-    critical_failure_rate: float | None
-    n_findings: int
-    details: list[dict[str, Any]]
 
 
 def load_golden(golden_path: Path) -> list[dict[str, Any]]:
@@ -30,8 +18,22 @@ def load_triage_results(results_path: Path) -> list[TriageResult]:
     with results_path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     
+    if not isinstance(data, list):
+        raise TypeError(f"Expected list of triage results, got {type(data).__name__}")
+    
     results: list[TriageResult] = []
-    for item in data:
+    for i, item in enumerate(data):
+        if not isinstance(item, dict):
+            raise TypeError(f"Result entry {i} is not an object")
+        
+        if "finding" not in item:
+            raise ValueError(f"Missing 'finding' in result entry {i}")
+        
+        required_fields = ["explanation", "exploitability", "fix", "revised_priority"]
+        for field in required_fields:
+            if field not in item:
+                raise ValueError(f"Missing required field '{field}' in result entry {i}")
+        
         finding_data = item["finding"]
         finding = Finding.from_dict(finding_data)
         results.append(TriageResult(
