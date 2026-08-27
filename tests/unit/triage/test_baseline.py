@@ -1,6 +1,5 @@
-import pytest
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
-from vibeshield.triage.baseline import baseline_triage, baseline_rank
+from vibeshield.triage.baseline import baseline_rank, baseline_triage
 from vibeshield.triage.models import TriageResult
 
 

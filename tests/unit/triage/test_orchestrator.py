@@ -1,10 +1,9 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
-from vibeshield.models.report import JSONReport, ScanMetadata, FingerprintResult, Summary
+from vibeshield.models.report import FingerprintResult, JSONReport, ScanMetadata, Summary
+from vibeshield.triage.models import TriageResult
 from vibeshield.triage.orchestrator import run_triage
-from vibeshield.triage.models import ContextSnippet, TriageResult
 
 
 def _make_finding(**overrides) -> Finding:
@@ -122,6 +121,9 @@ class TestRunTriage:
         assert len(results) == 1
         assert results[0].source == "baseline"
         assert "LLM triage failed for finding" in caplog.text
+        # Retriever failed before the LLM was ever called — confirms the
+        # orchestrator doesn't attempt generation with incomplete context.
+        mock_get_client.return_value.generate.assert_not_called()
 
     def test_mixed_success_and_failure(self, caplog):
         findings = [_make_finding(id="f1"), _make_finding(id="f2")]
