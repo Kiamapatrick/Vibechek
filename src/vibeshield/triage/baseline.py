@@ -1,5 +1,4 @@
 from vibeshield.models.finding import Finding, SeverityLevel
-from vibeshield.scanner.scoring import calculate_severity
 from vibeshield.triage.models import TriageResult
 
 SEVERITY_RANK = {
@@ -11,36 +10,27 @@ SEVERITY_RANK = {
 }
 
 
+def baseline_triage(finding: Finding) -> TriageResult:
+    """Non-AI triage for a single finding: reuses scanner's own severity/impact/likelihood.
+    
+    No explanation/fix generation — this is the control-group comparison for eval.
+    """
+    return TriageResult(
+        finding=finding,
+        explanation=f"Automated finding: {finding.title}",
+        exploitability=finding.likelihood,   # reuse Phase 1's own 1-5 scale
+        fix=finding.remediation,             # Phase 1 checks already produce this
+        revised_priority=finding.impact,     # reuse Phase 1's own 1-5 scale
+        source="baseline",
+        prompt_version="v1",
+    )
+
+
 def baseline_rank(findings: list[Finding]) -> list[TriageResult]:
     """Generate baseline triage results using severity scoring only.
     
-    This is the non-AI comparison baseline: sorts by severity score,
-    maps to TriageResult with minimal explanation.
+    Kept for batch use (e.g., eval harness comparison).
     """
-    # Ensure findings have severity/score calculated
-    results: list[TriageResult] = []
-    
-    for finding in findings:
-        # Use existing severity/score or recalculate
-        if finding.score == 0:
-            severity, _ = calculate_severity(finding.impact, finding.likelihood)
-        else:
-            severity = finding.severity
-        
-        # Map severity to priority (1-5)
-        priority = SEVERITY_RANK.get(severity, 1)
-        
-        results.append(TriageResult(
-            finding=finding,
-            explanation=f"Scanner detected {finding.title.lower()}. Severity: {severity.value}. "
-                        f"Review evidence and apply recommended remediation.",
-            exploitability=priority,  # Baseline assumes exploitability ≈ severity
-            fix=finding.remediation,
-            revised_priority=priority,
-            source="baseline",
-            prompt_version="baseline",
-        ))
-    
-    # Sort by revised_priority descending, then by score descending
+    results = [baseline_triage(f) for f in findings]
     results.sort(key=lambda r: (-r.revised_priority, -r.finding.score))
     return results
