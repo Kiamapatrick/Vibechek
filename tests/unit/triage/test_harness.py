@@ -209,6 +209,8 @@ class TestComputeSpearman:
         results = []
         for fid, priority in finding_priorities.items():
             finding = _make_finding(fid)
+            # Model uses higher revised_priority = more severe.
+            # Test fixtures should match: human rank 1 (most severe) → model priority 5 (highest)
             results.append(_make_triage_result(finding, priority))
         return results
 
@@ -232,7 +234,9 @@ class TestComputeSpearman:
             {"finding_id": "f4", "human_rank": 4},
             {"finding_id": "f5", "human_rank": 5},
         ]
-        results = self._make_results({"f1": 1, "f2": 2, "f3": 3, "f4": 4, "f5": 5})
+        # Model: higher revised_priority = more severe.
+        # Perfect agreement: human 1 (most severe) → model 5 (highest priority)
+        results = self._make_results({"f1": 5, "f2": 4, "f3": 3, "f4": 2, "f5": 1})
 
         rho, p = compute_spearman(golden, results)
 
@@ -249,8 +253,8 @@ class TestComputeSpearman:
             {"finding_id": "f4", "human_rank": 4},
             {"finding_id": "f5", "human_rank": 5},
         ]
-        # Reverse order: highest human rank gets lowest model priority
-        results = self._make_results({"f1": 5, "f2": 4, "f3": 3, "f4": 2, "f5": 1})
+        # Perfect disagreement: human 1 (most severe) → model 1 (lowest priority)
+        results = self._make_results({"f1": 1, "f2": 2, "f3": 3, "f4": 4, "f5": 5})
 
         rho, p = compute_spearman(golden, results)
 
@@ -267,8 +271,9 @@ class TestComputeSpearman:
             {"finding_id": "f4", "human_rank": 4},
             {"finding_id": "f5", "human_rank": 5},
         ]
-        # Results missing f4 and f5
-        results = self._make_results({"f1": 1, "f2": 2, "f3": 3})
+        # Results missing f4 and f5. Model: higher = more severe.
+        # Agreement: human 1→5, 2→4, 3→3
+        results = self._make_results({"f1": 5, "f2": 4, "f3": 3})
 
         rho, _ = compute_spearman(golden, results)
 
@@ -296,7 +301,8 @@ class TestComputeSpearman:
             {"finding_id": "f4", "human_rank": None},  # no rank
             {"finding_id": "f5", "human_rank": None},  # no rank
         ]
-        results = self._make_results({"f1": 1, "f2": 2, "f3": 3})
+        # Model: higher = more severe. Agreement: 1→5, 2→4, 3→3
+        results = self._make_results({"f1": 5, "f2": 4, "f3": 3})
 
         rho, _ = compute_spearman(golden, results)
 
@@ -309,7 +315,9 @@ class TestComputeSpearman:
             {"finding_id": "f2", "human_rank": 2},
             {"finding_id": "f3", "human_rank": 3},
         ]
-        results = self._make_results({"f1": 1, "f2": 2, "f3": 3, "f4": 4, "f5": 5})
+        # Model: higher = more severe. Agreement: 1→5, 2→4, 3→3
+        # Extra results f4, f5 ignored
+        results = self._make_results({"f1": 5, "f2": 4, "f3": 3, "f4": 2, "f5": 1})
 
         rho, _ = compute_spearman(golden, results)
 
@@ -336,10 +344,12 @@ class TestEvaluate:
             {"finding_id": "f3", "human_rank": 3},
         ]
         findings = [_make_finding(f) for f in ["f1", "f2", "f3"]]
+        # Model: higher revised_priority = more severe.
+        # Perfect agreement: human 1 (most severe) → model 3 (highest)
         llm_results = [
-            _make_triage_result(findings[0], 1),
+            _make_triage_result(findings[0], 3),
             _make_triage_result(findings[1], 2),
-            _make_triage_result(findings[2], 3),
+            _make_triage_result(findings[2], 1),
         ]
 
         golden_path = self._make_golden_file(tmp_path, golden)
@@ -364,15 +374,17 @@ class TestEvaluate:
             {"finding_id": "f3", "human_rank": 3},
         ]
         findings = [_make_finding(f) for f in ["f1", "f2", "f3"]]
+        # LLM perfect agreement: human 1→3, 2→2, 3→1
         llm_results = [
-            _make_triage_result(findings[0], 1),
+            _make_triage_result(findings[0], 3),
             _make_triage_result(findings[1], 2),
-            _make_triage_result(findings[2], 3),
+            _make_triage_result(findings[2], 1),
         ]
+        # Baseline perfect disagreement: human 1→1, 2→2, 3→3
         baseline_results = [
-            _make_triage_result(findings[0], 3, source="baseline"),
+            _make_triage_result(findings[0], 1, source="baseline"),
             _make_triage_result(findings[1], 2, source="baseline"),
-            _make_triage_result(findings[2], 1, source="baseline"),
+            _make_triage_result(findings[2], 3, source="baseline"),
         ]
 
         golden_path = self._make_golden_file(tmp_path, golden)
@@ -393,7 +405,8 @@ class TestEvaluate:
             {"finding_id": "f3", "human_rank": 3},
         ]
         findings = [_make_finding(f) for f in ["f1", "f2", "f3"]]
-        llm_results = [_make_triage_result(f, i+1) for i, f in enumerate(findings)]
+        # Model: higher = more severe. Agreement: 1→3, 2→2, 3→1
+        llm_results = [_make_triage_result(f, 3-i) for i, f in enumerate(findings)]
 
         golden_path = self._make_golden_file(tmp_path, golden)
         llm_path = self._make_fixture_file(tmp_path, llm_results, "llm.json")
@@ -409,7 +422,7 @@ class TestEvaluate:
             {"finding_id": "f3", "human_rank": 3},
         ]
         findings = [_make_finding(f) for f in ["f1", "f2", "f3"]]
-        llm_results = [_make_triage_result(f, i+1) for i, f in enumerate(findings)]
+        llm_results = [_make_triage_result(f, 3-i) for i, f in enumerate(findings)]
 
         golden_path = self._make_golden_file(tmp_path, golden)
         llm_path = self._make_fixture_file(tmp_path, llm_results, "llm.json")

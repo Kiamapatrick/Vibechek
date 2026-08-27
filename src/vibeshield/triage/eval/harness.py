@@ -75,6 +75,10 @@ def compute_spearman(
     human = [human_ranks[fid] for fid in sorted(common_ids)]
     model = [result_ranks[fid] for fid in sorted(common_ids)]
     
+    # Human rank: 1 = most severe. Model priority: higher = more severe.
+    # Negate human so both scales align (higher = more severe).
+    human = [-h for h in human]
+    
     try:
         rho, p = spearmanr(human, model)
         return float(rho), float(p)
