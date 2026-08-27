@@ -18,3 +18,9 @@ UI_PLAN.md
 test-target/
 test_debug.py
 pytest_output.txt
+
+# Generated evaluation/test artifacts
+*_results.json
+report.json
+test_server.py
+check_report.py
