@@ -19,12 +19,12 @@ def load_triage_results(results_path: Path) -> list[TriageResult]:
         data = json.load(f)
     
     if not isinstance(data, list):
-        raise TypeError(f"Expected list of triage results, got {type(data).__name__}")
+        raise ValueError(f"Expected list of triage results, got {type(data).__name__}")  # noqa: TRY004
     
     results: list[TriageResult] = []
     for i, item in enumerate(data):
         if not isinstance(item, dict):
-            raise TypeError(f"Result entry {i} is not an object")
+            raise ValueError(f"Result entry {i} is not an object")  # noqa: TRY004
         
         if "finding" not in item:
             raise ValueError(f"Missing 'finding' in result entry {i}")

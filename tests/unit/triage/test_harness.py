@@ -1,5 +1,4 @@
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -271,7 +270,7 @@ class TestComputeSpearman:
         # Results missing f4 and f5
         results = self._make_results({"f1": 1, "f2": 2, "f3": 3})
 
-        rho, p = compute_spearman(golden, results)
+        rho, _ = compute_spearman(golden, results)
 
         assert rho is not None
         assert abs(rho - 1.0) < 0.001
@@ -299,7 +298,7 @@ class TestComputeSpearman:
         ]
         results = self._make_results({"f1": 1, "f2": 2, "f3": 3})
 
-        rho, p = compute_spearman(golden, results)
+        rho, _ = compute_spearman(golden, results)
 
         assert rho is not None
         assert abs(rho - 1.0) < 0.001
@@ -312,7 +311,7 @@ class TestComputeSpearman:
         ]
         results = self._make_results({"f1": 1, "f2": 2, "f3": 3, "f4": 4, "f5": 5})
 
-        rho, p = compute_spearman(golden, results)
+        rho, _ = compute_spearman(golden, results)
 
         assert rho is not None
         assert abs(rho - 1.0) < 0.001
@@ -471,46 +470,47 @@ class TestMainCLI:
 
     def test_main_default_golden_path(self):
         import sys
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
 
-        with patch.object(sys, "argv", ["harness.py", "--llm-results", "llm.json"]):
-            with patch("vibeshield.triage.eval.harness.evaluate") as mock_evaluate:
-                mock_evaluate.return_value = {
-                    "llm": {"spearman_rho": 0.5, "spearman_p": 0.1},
-                    "baseline": {"spearman_rho": None, "spearman_p": None},
-                    "n_golden_with_ranks": 3,
-                    "n_llm_results": 3,
-                    "note": "test",
-                }
-                with patch("builtins.open", MagicMock()):
-                    with patch("json.dump") as mock_dump:
-                        with patch("builtins.print"):
-                            from vibeshield.triage.eval.harness import main
-                            main()
-                            mock_evaluate.assert_called_once()
-                            call_args = mock_evaluate.call_args
-                            assert str(call_args[0][0]).endswith("golden.json")
+        with (
+            patch.object(sys, "argv", ["harness.py", "--llm-results", "llm.json"]),
+            patch("vibeshield.triage.eval.harness.evaluate") as mock_evaluate,
+            patch("builtins.open"),
+            patch("json.dump"),
+            patch("builtins.print"),
+        ):
+            mock_evaluate.return_value = {
+                "llm": {"spearman_rho": 0.5, "spearman_p": 0.1},
+                "baseline": {"spearman_rho": None, "spearman_p": None},
+                "n_golden_with_ranks": 3,
+                "n_llm_results": 3,
+                "note": "test",
+            }
+            from vibeshield.triage.eval.harness import main
+            main()
+            mock_evaluate.assert_called_once()
+            call_args = mock_evaluate.call_args
+            assert str(call_args[0][0]).endswith("golden.json")
 
     def test_main_output_written(self, tmp_path):
         import sys
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
 
         output_path = tmp_path / "eval_results.json"
         with patch.object(sys, "argv", [
             "harness.py", "--llm-results", "llm.json", "--output", str(output_path)
-        ]):
-            with patch("vibeshield.triage.eval.harness.evaluate") as mock_evaluate:
-                mock_evaluate.return_value = {
-                    "llm": {"spearman_rho": 0.5, "spearman_p": 0.1},
-                    "baseline": {"spearman_rho": None, "spearman_p": None},
-                    "n_golden_with_ranks": 3,
-                    "n_llm_results": 3,
-                    "note": "test",
-                }
-                with patch("builtins.print"):
-                    from vibeshield.triage.eval.harness import main
-                    main()
-                    assert output_path.exists()
-                    with output_path.open("r") as f:
-                        data = json.load(f)
-                    assert data["llm"]["spearman_rho"] == 0.5
+        ]), patch("vibeshield.triage.eval.harness.evaluate") as mock_evaluate:
+            mock_evaluate.return_value = {
+                "llm": {"spearman_rho": 0.5, "spearman_p": 0.1},
+                "baseline": {"spearman_rho": None, "spearman_p": None},
+                "n_golden_with_ranks": 3,
+                "n_llm_results": 3,
+                "note": "test",
+            }
+            with patch("builtins.print"):
+                from vibeshield.triage.eval.harness import main
+                main()
+                assert output_path.exists()
+                with output_path.open("r") as f:
+                    data = json.load(f)
+                assert data["llm"]["spearman_rho"] == 0.5
