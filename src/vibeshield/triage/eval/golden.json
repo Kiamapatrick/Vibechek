@@ -1,62 +1,32 @@
 [
   {
-    "finding_id": "PLACEHOLDER_REAL_SCAN_ID_1",
+    "finding_id": "finding-0ff7312d",
     "source": "real_scan",
-    "human_rank": null,
-    "human_notes": ""
+    "human_rank": 1,
+    "human_notes": "CORS wildcard with credentials on API - should rank critical"
   },
   {
-    "finding_id": "PLACEHOLDER_REAL_SCAN_ID_2",
+    "finding_id": "finding-6a617277",
     "source": "real_scan",
-    "human_rank": null,
-    "human_notes": ""
-  },
-  {
-    "finding_id": "PLACEHOLDER_REAL_SCAN_ID_3",
-    "source": "real_scan",
-    "human_rank": null,
-    "human_notes": ""
-  },
-  {
-    "finding_id": "PLACEHOLDER_REAL_SCAN_ID_4",
-    "source": "real_scan",
-    "human_rank": null,
-    "human_notes": ""
-  },
-  {
-    "finding_id": "PLACEHOLDER_REAL_SCAN_ID_5",
-    "source": "real_scan",
-    "human_rank": null,
-    "human_notes": ""
-  },
-  {
-    "finding_id": "synthetic_exposed_secrets",
-    "source": "synthetic",
-    "human_rank": null,
+    "human_rank": 2,
     "human_notes": "Exposed AWS keys in client bundle - should rank very high"
   },
   {
-    "finding_id": "synthetic_supabase_rls",
-    "source": "synthetic",
-    "human_rank": null,
-    "human_notes": "Supabase RLS read bypass on users table - should rank very high"
-  },
-  {
-    "finding_id": "synthetic_unprotected_routes",
-    "source": "synthetic",
-    "human_rank": null,
+    "finding_id": "finding-5ed754e0",
+    "source": "real_scan",
+    "human_rank": 3,
     "human_notes": "Unprotected /api/admin endpoint returning user data - should rank high"
   },
   {
-    "finding_id": "synthetic_missing_csp",
-    "source": "synthetic",
-    "human_rank": null,
-    "human_notes": "Missing CSP header on static page - should rank medium/low"
+    "finding_id": "finding-c0c3270b",
+    "source": "real_scan",
+    "human_rank": 4,
+    "human_notes": "Unprotected /api/users endpoint returning user data - should rank high"
   },
   {
-    "finding_id": "synthetic_cors_wildcard",
-    "source": "synthetic",
-    "human_rank": null,
-    "human_notes": "CORS wildcard with credentials on API - should rank critical"
+    "finding_id": "finding-35af6ad4",
+    "source": "real_scan",
+    "human_rank": 5,
+    "human_notes": "Missing CSP header on static page - should rank medium/low"
   }
 ]

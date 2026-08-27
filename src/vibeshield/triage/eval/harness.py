@@ -135,10 +135,10 @@ def main() -> None:
         json.dump(metrics, f, indent=2)
     
     print("Evaluation complete.")
-    print(f"  LLM Spearman ρ: {metrics['llm']['spearman_rho']}")
+    print(f"  LLM Spearman rho: {metrics['llm']['spearman_rho']}")
     print(f"  LLM p-value: {metrics['llm']['spearman_p']}")
     if metrics['baseline']['spearman_rho'] is not None:
-        print(f"  Baseline Spearman ρ: {metrics['baseline']['spearman_rho']}")
+        print(f"  Baseline Spearman rho: {metrics['baseline']['spearman_rho']}")
         print(f"  Baseline p-value: {metrics['baseline']['spearman_p']}")
     print(f"  Results written to {args.output}")
 
