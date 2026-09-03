@@ -1,4 +1,3 @@
-import pytest
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.triage.models import TriageResult

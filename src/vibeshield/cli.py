@@ -159,7 +159,7 @@ def scan(
 
 @app.command()
 def triage(
-    report_path: Path = typer.Argument(..., help="Path to JSON scan report file", exists=True),
+    report_path: Path = typer.Argument(..., help="Path to JSON scan report file", exists=True),  # noqa: B008
     output_file: Path | None = typer.Option(  # noqa: B008
         None, "--output-file", "-f",
         help="Write triage report to file instead of stdout",
