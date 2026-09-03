@@ -73,7 +73,9 @@ def generate_report(results: list[TriageResult]) -> str:
         lines.append("")
         lines.append(f"    Fix: {result.fix}")
         lines.append("")
-        lines.append(f"    Evidence: {finding.evidence.snippet[:200]}...")
+        snippet = finding.evidence.snippet
+        display = snippet[:200] + ("..." if len(snippet) > 200 else "")
+        lines.append(f"    Evidence: {display}")
         lines.append(f"    URL: {finding.evidence.url}")
         if finding.remediation:
             lines.append(f"    Scanner remediation: {finding.remediation}")

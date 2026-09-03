@@ -12,6 +12,7 @@ from vibeshield.triage.ingest import load_report
 from vibeshield.triage.llm import GroqClient, get_client
 from vibeshield.triage.models import ContextSnippet, TriageResult
 from vibeshield.triage.orchestrator import run_triage
+from vibeshield.triage.pipeline import run_full_pipeline
 from vibeshield.triage.report import generate_report, write_report
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "get_settings",
     "load_kb",
     "load_report",
+    "run_full_pipeline",
     "run_triage",
     "write_report",
 ]

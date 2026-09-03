@@ -10,6 +10,7 @@ from vibeshield.config import settings
 from vibeshield.reporting.json import JSONReporter
 from vibeshield.reporting.plain import PlainReporter
 from vibeshield.scanner.engine import ScannerEngine
+from vibeshield.triage.pipeline import run_full_pipeline
 
 app = typer.Typer(
     name="vibeshield",
@@ -154,6 +155,42 @@ def scan(
         raise typer.Exit(code=2)
     elif plain_report.summary.high > 0:
         raise typer.Exit(code=3)
+
+
+@app.command()
+def triage(
+    report_path: Path = typer.Argument(..., help="Path to JSON scan report file", exists=True),
+    output_file: Path | None = typer.Option(  # noqa: B008
+        None, "--output-file", "-f",
+        help="Write triage report to file instead of stdout",
+    ),
+) -> None:
+    """
+    Run LLM triage on a scan report and generate a prioritized triage report.
+    
+    Reads a JSON scan report (output from 'vibeshield scan --output json'),
+    triages every finding via LLM (with baseline fallback), and produces
+    a formatted triage report.
+    """
+    console.print(Panel(
+        f"[bold]Report:[/bold] {report_path}",
+        title="[blue]VibeShield Triage Starting[/blue]",
+        border_style="blue",
+    ))
+
+    try:
+        report_text = run_full_pipeline(report_path)
+    except Exception as e:  # noqa: BLE001 -- top-level CLI guard
+        console.print(f"[red]Triage failed:[/red] {e}")
+        import traceback
+        console.print(traceback.format_exc())
+        raise typer.Exit(code=1)
+
+    if output_file:
+        output_file.write_text(report_text, encoding="utf-8")
+        console.print(f"\n[green]Triage report saved to:[/green] {output_file}")
+    else:
+        console.print("\n" + report_text)
 
 
 if __name__ == "__main__":
