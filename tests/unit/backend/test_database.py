@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from pymongo.errors import ServerSelectionTimeoutError
 from backend.database import connect_to_mongo, close_mongo_connection, get_db
 from backend.exceptions import DatabaseUnavailableError
@@ -53,6 +54,51 @@ async def test_lazy_connect_on_first_request_returns_503():
             assert response.json() == {"detail": "Database temporarily unavailable"}
     finally:
         backend.database.AsyncIOMotorClient = original_client
+
+
+@pytest.mark.asyncio
+async def test_concurrent_requests_dont_pile_on_during_outage():
+    """10 concurrent get_db() calls during outage -> only 1 connection sequence (not 10)."""
+    import backend.database
+    backend.database.reset_connection_state()
+    original_client = backend.database.AsyncIOMotorClient
+    
+    class FailingAdmin:
+        async def command(self, *args, **kwargs):
+            await asyncio.sleep(0.1)  # realistic delay forces genuine interleaving
+            raise ServerSelectionTimeoutError("simulated outage")
+    
+    class FailingClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        
+        @property
+        def admin(self):
+            return FailingAdmin()
+        
+        def __getitem__(self, key):
+            return self
+        
+        def close(self):
+            pass
+    
+    backend.database.AsyncIOMotorClient = FailingClient
+    try:
+        # Fire 10 concurrent get_db() calls
+        results = await asyncio.gather(
+            *[get_db() for _ in range(10)],
+            return_exceptions=True
+        )
+        
+        # All should raise DatabaseUnavailableError
+        for result in results:
+            assert isinstance(result, DatabaseUnavailableError)
+        
+        # Only ONE connection sequence should have been attempted
+        assert backend.database._connect_sequence_count == 1, f"Expected 1 sequence, got {backend.database._connect_sequence_count}"
+    finally:
+        backend.database.AsyncIOMotorClient = original_client
+        backend.database.reset_connection_state()
 
 
 @pytest.mark.asyncio

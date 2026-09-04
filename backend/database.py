@@ -14,6 +14,8 @@ log = logging.getLogger(__name__)
 _client: AsyncIOMotorClient | None = None
 _db: AsyncIOMotorDatabase | None = None
 _last_connection_failure: float = 0.0
+_connect_lock: asyncio.Lock | None = None
+_connect_sequence_count: int = 0
 
 
 async def _create_client() -> AsyncIOMotorClient:
@@ -28,13 +30,14 @@ async def _create_client() -> AsyncIOMotorClient:
 
 
 async def _connect_with_retry() -> AsyncIOMotorDatabase:
-    global _client, _db, _last_connection_failure
+    global _client, _db, _last_connection_failure, _connect_sequence_count
+    _connect_sequence_count += 1
     last_exception = None
     for attempt in range(settings.MONGODB_MAX_RETRIES):
         try:
             _client = await _create_client()
-            _db = _client[settings.MONGODB_DB]
             await _client.admin.command("ping")
+            _db = _client[settings.MONGODB_DB]
             log.info("Connected to MongoDB: %s", settings.MONGODB_DB)
             _last_connection_failure = 0.0
             return _db
@@ -79,17 +82,28 @@ async def connect_to_mongo() -> AsyncIOMotorDatabase:
 
 
 async def close_mongo_connection() -> None:
-    global _client, _db, _last_connection_failure
+    global _client, _db, _last_connection_failure, _connect_lock
     if _client:
         _client.close()
         _client = None
         _db = None
         _last_connection_failure = 0.0
+        _connect_lock = None
         log.info("Closed MongoDB connection")
 
 
+def reset_connection_state() -> None:
+    """Reset all connection state for testing."""
+    global _client, _db, _last_connection_failure, _connect_lock, _connect_sequence_count
+    _client = None
+    _db = None
+    _last_connection_failure = 0.0
+    _connect_lock = None
+    _connect_sequence_count = 0
+
+
 async def get_db() -> AsyncIOMotorDatabase:
-    global _db, _last_connection_failure  # noqa: PLW0602
+    global _db, _last_connection_failure, _connect_lock  # noqa: PLW0602
     if _db is not None:
         return _db
 
@@ -101,4 +115,16 @@ async def get_db() -> AsyncIOMotorDatabase:
             log.debug("MongoDB connection cooldown active (%.1fs remaining)", remaining)
             raise DatabaseUnavailableError("Database temporarily unavailable")
 
-    return await connect_to_mongo()
+    if _connect_lock is None:
+        _connect_lock = asyncio.Lock()
+
+    async with _connect_lock:
+        # Double-check after acquiring — another request may have already
+        # connected (or recorded a failure) while we were waiting
+        if _db is not None:
+            return _db
+        if _last_connection_failure > 0:
+            elapsed = time.time() - _last_connection_failure
+            if elapsed < settings.MONGODB_FAILURE_COOLDOWN_SECONDS:
+                raise DatabaseUnavailableError("Database temporarily unavailable")
+        return await connect_to_mongo()
