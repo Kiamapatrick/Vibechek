@@ -1,11 +1,13 @@
-import pytest
 import asyncio
-from pymongo.errors import ServerSelectionTimeoutError
-from backend.database import connect_to_mongo, close_mongo_connection, get_db
-from backend.exceptions import DatabaseUnavailableError
-from backend.config import settings
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from fastapi.testclient import TestClient
+from pymongo.errors import ServerSelectionTimeoutError
+
+from backend.config import settings
+from backend.database import close_mongo_connection, connect_to_mongo, get_db
+from backend.exceptions import DatabaseUnavailableError
 from backend.main import app
 
 
@@ -104,7 +106,7 @@ async def test_concurrent_requests_dont_pile_on_during_outage():
 @pytest.mark.asyncio
 async def test_close_mongo_connection_resets_state(mock_motor_client, mongomock_db):
     await close_mongo_connection()
-    db = await connect_to_mongo()
+    await connect_to_mongo()
     await close_mongo_connection()
     assert mock_motor_client.close.called
     db2 = await connect_to_mongo()

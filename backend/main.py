@@ -405,11 +405,11 @@ async def regenerate_triage(
 
 # ===================== REPORT ENDPOINTS =====================
 
-@app.get("/api/scans/{scan_id}/report")
+@app.get("/api/scans/{scan_id}/report", response_model=None)
 async def get_report(
     scan_id: Annotated[UUID, Path(...)],
     format: Annotated[ReportFormat, Query()] = ReportFormat.PLAIN,
-):
+) -> PlainTextResponse | dict:
     """Get scan report in plain text or JSON format."""
     db = await get_db()
 
@@ -438,7 +438,7 @@ async def get_report(
 async def get_kb_context(
     finding_id: Annotated[str, Query(...)],
     scan_id: Annotated[UUID, Query(...)],
-):
+) -> dict:
     """Get KB context used for a finding's triage (Phase 2)."""
     from vibeshield.models.finding import Evidence, Finding
     from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel
@@ -489,5 +489,5 @@ async def get_kb_context(
 # ===================== HEALTH =====================
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict:
     return {"status": "healthy", "service": "vibeshield-api"}

@@ -64,10 +64,12 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+mypy_path = "src"
 
 [[tool.mypy.overrides]]
-module = ["rank_bm25.*", "scipy.*"]
+module = ["rank_bm25.*", "scipy.*", "numpy.*"]
 ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

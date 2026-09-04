@@ -1,6 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
 import mongomock_motor
+import pytest
 
 
 @pytest.fixture

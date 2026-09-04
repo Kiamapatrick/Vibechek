@@ -1,11 +1,22 @@
-import pytest
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
+
+import pytest
+
 from backend.models import (
-    ScanCreate, ScanResponse, ScanProgress, ScanStatus,
-    Finding, FindingResponse, Evidence, SeverityLevel,
-    TriageRunCreate, TriageRunResponse, TriageResult, TriageMode, TriageSource,
-    ProgressLog
+    Evidence,
+    Finding,
+    FindingResponse,
+    ProgressLog,
+    ScanCreate,
+    ScanProgress,
+    ScanStatus,
+    SeverityLevel,
+    TriageMode,
+    TriageResult,
+    TriageRunCreate,
+    TriageRunResponse,
+    TriageSource,
 )
 
 
@@ -15,9 +26,7 @@ def _serialize_for_mongo(obj):
         return {k: _serialize_for_mongo(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [_serialize_for_mongo(v) for v in obj]
-    elif isinstance(obj, UUID):
-        return str(obj)
-    elif hasattr(obj, '__str__') and type(obj).__name__ == 'HttpUrl':
+    elif isinstance(obj, UUID) or hasattr(obj, '__str__') and type(obj).__name__ == 'HttpUrl':
         return str(obj)
     elif isinstance(obj, datetime):
         return obj
