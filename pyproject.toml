@@ -67,7 +67,7 @@ disallow_untyped_defs = true
 mypy_path = "src"
 
 [[tool.mypy.overrides]]
-module = ["rank_bm25.*", "scipy.*", "numpy.*"]
+module = ["rank_bm25.*", "scipy.*", "numpy"]
 ignore_missing_imports = true
 follow_imports = "skip"
 
