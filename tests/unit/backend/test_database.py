@@ -4,6 +4,8 @@ from backend.database import connect_to_mongo, close_mongo_connection, get_db
 from backend.exceptions import DatabaseUnavailableError
 from backend.config import settings
 from unittest.mock import AsyncMock, MagicMock
+from fastapi.testclient import TestClient
+from backend.main import app
 
 
 @pytest.mark.asyncio
@@ -12,7 +14,7 @@ async def test_get_db_lazy_connects(mock_motor_client, mongomock_db):
     db = await connect_to_mongo()
     assert db is mongomock_db
     mock_motor_client.admin.command.assert_awaited_with("ping")
-    db2 = get_db()
+    db2 = await get_db()
     assert db2 is db
 
 
@@ -29,6 +31,26 @@ async def test_get_db_returns_503_on_unreachable():
     try:
         with pytest.raises(DatabaseUnavailableError):
             await connect_to_mongo()
+    finally:
+        backend.database.AsyncIOMotorClient = original_client
+
+
+@pytest.mark.asyncio
+async def test_lazy_connect_on_first_request_returns_503():
+    """End-to-end test: app starts without DB, first request gets 503."""
+    await close_mongo_connection()
+    import backend.database
+    original_client = backend.database.AsyncIOMotorClient
+    
+    def failing_client(*args, **kwargs):
+        raise ServerSelectionTimeoutError("timeout")
+    
+    backend.database.AsyncIOMotorClient = failing_client
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/scans")
+            assert response.status_code == 503
+            assert response.json() == {"detail": "Database temporarily unavailable"}
     finally:
         backend.database.AsyncIOMotorClient = original_client
 

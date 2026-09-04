@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     MONGODB_SERVER_SELECTION_TIMEOUT_MS: int = 5000
     MONGODB_CONNECT_TIMEOUT_MS: int = 10000
     MONGODB_SOCKET_TIMEOUT_MS: int = 20000
+    MONGODB_FAILURE_COOLDOWN_SECONDS: float = 5.0
     
     # Groq LLM
     GROQ_API_KEY: str | None = None

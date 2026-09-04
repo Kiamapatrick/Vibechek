@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from sse_starlette.sse import EventSourceResponse
 
 from backend.config import settings
-from backend.database import close_mongo_connection, connect_to_mongo, get_db
+from backend.database import close_mongo_connection, get_db
 from backend.exceptions import DatabaseUnavailableError
 from backend.jobs import run_baseline_triage, run_llm_triage, run_scan
 from backend.models import (
@@ -34,8 +34,7 @@ log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    await connect_to_mongo()
+    # Startup - no DB connect; lazy on first request
     yield
     # Shutdown
     await close_mongo_connection()
@@ -70,7 +69,7 @@ async def database_unavailable_handler(request: Request, exc: DatabaseUnavailabl
 @app.post("/api/scans", response_model=ScanResponse, status_code=202)
 async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
     """Start a new security scan."""
-    db = get_db()
+    db = await get_db()
 
     scan_data = ScanCreate(
         scan_id=uuid4(),
@@ -102,7 +101,7 @@ async def list_scans(
     offset: int = Query(0, ge=0),
 ):
     """List all scans with optional filtering."""
-    db = get_db()
+    db = await get_db()
 
     query = {}
     if status:
@@ -126,7 +125,7 @@ async def list_scans(
 @app.get("/api/scans/{scan_id}", response_model=ScanResponse)
 async def get_scan(scan_id: UUID = Path(...)):
     """Get scan details by ID."""
-    db = get_db()
+    db = await get_db()
     doc = await db.scans.find_one({"scan_id": str(scan_id)})
     if not doc:
         raise HTTPException(404, "Scan not found")
@@ -145,7 +144,7 @@ async def get_scan(scan_id: UUID = Path(...)):
 @app.get("/api/scans/{scan_id}/progress")
 async def scan_progress_stream(scan_id: UUID = Path(...)):
     """SSE stream for live scan progress."""
-    db = get_db()
+    db = await get_db()
 
     # Verify scan exists
     doc = await db.scans.find_one({"scan_id": str(scan_id)})
@@ -203,7 +202,7 @@ async def get_findings(
     offset: int = Query(0, ge=0),
 ):
     """Get findings for a scan with optional filters."""
-    db = get_db()
+    db = await get_db()
 
     query = {"scan_id": str(scan_id)}
     if severity:
@@ -221,7 +220,7 @@ async def get_findings(
 @app.get("/api/scans/{scan_id}/findings/stats")
 async def get_findings_stats(scan_id: UUID = Path(...)):
     """Get finding statistics (count by severity/check)."""
-    db = get_db()
+    db = await get_db()
 
     pipeline = [
         {"$match": {"scan_id": str(scan_id)}},
@@ -251,7 +250,7 @@ async def start_triage(
     background_tasks: BackgroundTasks = None,
 ):
     """Start a triage run (baseline or LLM)."""
-    db = get_db()
+    db = await get_db()
 
     # Verify scan exists and is completed
     scan = await db.scans.find_one({"scan_id": str(scan_id)})
@@ -286,7 +285,7 @@ async def start_triage(
 @app.get("/api/scans/{scan_id}/triage", response_model=list[TriageRunResponse])
 async def list_triage_runs(scan_id: UUID = Path(...)):
     """List all triage runs for a scan."""
-    db = get_db()
+    db = await get_db()
 
     cursor = db.triage_runs.find({"scan_id": str(scan_id)}).sort("created_at", -1)
     runs = []
@@ -307,7 +306,7 @@ async def list_triage_runs(scan_id: UUID = Path(...)):
 @app.get("/api/triage/{triage_id}", response_model=TriageRunResponse)
 async def get_triage(triage_id: UUID = Path(...)):
     """Get triage run details by ID."""
-    db = get_db()
+    db = await get_db()
     doc = await db.triage_runs.find_one({"triage_id": str(triage_id)})
     if not doc:
         raise HTTPException(404, "Triage run not found")
@@ -327,7 +326,7 @@ async def get_triage(triage_id: UUID = Path(...)):
 @app.get("/api/scans/{scan_id}/triage/compare", response_model=TriageCompareResponse)
 async def compare_triage(scan_id: UUID = Path(...)):
     """Compare baseline vs LLM triage results."""
-    db = get_db()
+    db = await get_db()
 
     baseline_run = await db.triage_runs.find_one(
         {"scan_id": str(scan_id), "mode": "baseline"},
@@ -372,7 +371,7 @@ async def regenerate_triage(
     background_tasks: BackgroundTasks = None,
 ):
     """Regenerate triage for a single finding (LLM only)."""
-    db = get_db()
+    db = await get_db()
 
     triage = await db.triage_runs.find_one({"triage_id": str(triage_id)})
     if not triage:
@@ -411,7 +410,7 @@ async def get_report(
     format: ReportFormat = Query(ReportFormat.PLAIN),
 ):
     """Get scan report in plain text or JSON format."""
-    db = get_db()
+    db = await get_db()
 
     scan = await db.scans.find_one({"scan_id": str(scan_id)})
     if not scan:
@@ -441,7 +440,7 @@ async def get_kb_context(finding_id: str = Query(...), scan_id: UUID = Query(...
     from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel
     from vibeshield.triage.context.retriever import get_retriever
 
-    db = get_db()
+    db = await get_db()
 
     finding_doc = await db.findings.find_one({"scan_id": str(scan_id), "id": finding_id})
     if not finding_doc:

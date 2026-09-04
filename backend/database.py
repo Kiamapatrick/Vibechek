@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
@@ -12,6 +13,7 @@ log = logging.getLogger(__name__)
 
 _client: AsyncIOMotorClient | None = None
 _db: AsyncIOMotorDatabase | None = None
+_last_connection_failure: float = 0.0
 
 
 async def _create_client() -> AsyncIOMotorClient:
@@ -26,7 +28,7 @@ async def _create_client() -> AsyncIOMotorClient:
 
 
 async def _connect_with_retry() -> AsyncIOMotorDatabase:
-    global _client, _db
+    global _client, _db, _last_connection_failure
     last_exception = None
     for attempt in range(settings.MONGODB_MAX_RETRIES):
         try:
@@ -34,6 +36,7 @@ async def _connect_with_retry() -> AsyncIOMotorDatabase:
             _db = _client[settings.MONGODB_DB]
             await _client.admin.command("ping")
             log.info("Connected to MongoDB: %s", settings.MONGODB_DB)
+            _last_connection_failure = 0.0
             return _db
         except (ConnectionFailure, ServerSelectionTimeoutError) as e:
             last_exception = e
@@ -44,6 +47,7 @@ async def _connect_with_retry() -> AsyncIOMotorDatabase:
                 await asyncio.sleep(delay)
             else:
                 log.error("All %d MongoDB connection attempts failed", settings.MONGODB_MAX_RETRIES)
+    _last_connection_failure = time.time()
     raise DatabaseUnavailableError(f"Failed to connect to MongoDB after {settings.MONGODB_MAX_RETRIES} attempts: {last_exception}") from last_exception
 
 
@@ -65,7 +69,7 @@ async def _create_indexes(db: AsyncIOMotorDatabase) -> None:
 
 
 async def connect_to_mongo() -> AsyncIOMotorDatabase:
-    """Initialize connection lazily on first call."""
+    """Initialize connection. Called lazily by get_db()."""
     global _db
     if _db is not None:
         return _db
@@ -75,15 +79,26 @@ async def connect_to_mongo() -> AsyncIOMotorDatabase:
 
 
 async def close_mongo_connection() -> None:
-    global _client, _db
+    global _client, _db, _last_connection_failure
     if _client:
         _client.close()
         _client = None
         _db = None
+        _last_connection_failure = 0.0
         log.info("Closed MongoDB connection")
 
 
-def get_db() -> AsyncIOMotorDatabase:
-    if _db is None:
-        raise DatabaseUnavailableError("Database not initialized. Call connect_to_mongo() first.")
-    return _db
+async def get_db() -> AsyncIOMotorDatabase:
+    global _db, _last_connection_failure  # noqa: PLW0602
+    if _db is not None:
+        return _db
+
+    # Cooldown: if we recently failed, don't hammer the DB
+    if _last_connection_failure > 0:
+        elapsed = time.time() - _last_connection_failure
+        if elapsed < settings.MONGODB_FAILURE_COOLDOWN_SECONDS:
+            remaining = settings.MONGODB_FAILURE_COOLDOWN_SECONDS - elapsed
+            log.debug("MongoDB connection cooldown active (%.1fs remaining)", remaining)
+            raise DatabaseUnavailableError("Database temporarily unavailable")
+
+    return await connect_to_mongo()
