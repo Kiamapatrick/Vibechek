@@ -1,4 +1,26 @@
 import pytest
+from unittest.mock import AsyncMock, MagicMock
+import mongomock_motor
+
+
+@pytest.fixture
+def mongomock_db():
+    client = mongomock_motor.AsyncMongoMockClient()
+    db = client["vibeshield_test"]
+    yield db
+    client.close()
+
+
+@pytest.fixture(autouse=True)
+def mock_motor_client(mongomock_db, monkeypatch):
+    mock_client = AsyncMock()
+    mock_client.__getitem__.return_value = mongomock_db
+    mock_client.admin.command = AsyncMock(return_value={"ok": 1})
+    mock_client.close = MagicMock()
+    
+    import backend.database
+    monkeypatch.setattr(backend.database, "AsyncIOMotorClient", lambda *args, **kwargs: mock_client)
+    return mock_client
 
 
 @pytest.fixture

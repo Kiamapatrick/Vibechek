@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional, List, Literal
 from datetime import datetime
 from enum import Enum
+from typing import ClassVar, Literal
 from uuid import UUID, uuid4
+
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class ScanStatus(str, Enum):
@@ -40,8 +41,8 @@ class ScanRequest(BaseModel):
 
 class ScanProgress(BaseModel):
     pages_crawled: int = 0
-    current_check: Optional[str] = None
-    current_url: Optional[str] = None
+    current_check: str | None = None
+    current_url: str | None = None
     findings_found: int = 0
     errors: int = 0
 
@@ -53,7 +54,7 @@ class ScanResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     target_url: str
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class ScanCreate(ScanRequest):
@@ -63,20 +64,20 @@ class ScanCreate(ScanRequest):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     target_url: str  # Store as string for MongoDB
-    error: Optional[str] = None
+    error: str | None = None
 
     class Config:
         populate_by_name = True
-        json_encoders = {UUID: str}
+        json_encoders: ClassVar[dict] = {UUID: str}
 
 
 class Evidence(BaseModel):
     url: str
     snippet: str
-    matched_pattern: Optional[str] = None
+    matched_pattern: str | None = None
     request_headers: dict = {}
     response_headers: dict = {}
-    response_status: Optional[int] = None
+    response_status: int | None = None
 
 
 class Finding(BaseModel):
@@ -87,12 +88,12 @@ class Finding(BaseModel):
     score: int
     impact: int
     likelihood: int
-    wstg_id: Optional[str] = None
-    attck_ids: List[str] = []
+    wstg_id: str | None = None
+    attck_ids: list[str] = []
     evidence: Evidence
     confidence: float
     remediation: str
-    references: List[str] = []
+    references: list[str] = []
 
 
 class FindingResponse(Finding):
@@ -116,10 +117,10 @@ class TriageRunCreate(BaseModel):
     scan_id: UUID
     mode: TriageMode
     status: Literal["pending", "running", "completed", "failed"] = "pending"
-    results: List[TriageResult] = []
+    results: list[TriageResult] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
-    error: Optional[str] = None
+    completed_at: datetime | None = None
+    error: str | None = None
 
 
 class TriageRunResponse(TriageRunCreate):
@@ -128,11 +129,11 @@ class TriageRunResponse(TriageRunCreate):
 
 class TriageCompareResponse(BaseModel):
     scan_id: UUID
-    baseline: List[TriageResult]
-    llm: List[TriageResult]
-    baseline_only: List[str]  # finding_ids only in baseline
-    llm_only: List[str]       # finding_ids only in LLM
-    changed_priority: List[dict]  # {finding_id, baseline_priority, llm_priority}
+    baseline: list[TriageResult]
+    llm: list[TriageResult]
+    baseline_only: list[str]  # finding_ids only in baseline
+    llm_only: list[str]       # finding_ids only in LLM
+    changed_priority: list[dict]  # {finding_id, baseline_priority, llm_priority}
 
 
 class ReportFormat(str, Enum):
@@ -146,4 +147,4 @@ class ProgressLog(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     level: str  # info, warning, error
     message: str
-    stage: Optional[str] = None  # crawl, check, triage, etc.
+    stage: str | None = None  # crawl, check, triage, etc.

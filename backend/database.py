@@ -1,42 +1,77 @@
+import asyncio
+import logging
+
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
-from pymongo.errors import ConnectionFailure
-import logging
-from typing import Optional
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
 from backend.config import settings
+from backend.exceptions import DatabaseUnavailableError
 
 log = logging.getLogger(__name__)
 
-_client: Optional[AsyncIOMotorClient] = None
-_db: Optional[AsyncIOMotorDatabase] = None
+_client: AsyncIOMotorClient | None = None
+_db: AsyncIOMotorDatabase | None = None
+
+
+async def _create_client() -> AsyncIOMotorClient:
+    return AsyncIOMotorClient(
+        settings.MONGODB_URI,
+        maxPoolSize=settings.MONGODB_MAX_POOL_SIZE,
+        minPoolSize=settings.MONGODB_MIN_POOL_SIZE,
+        serverSelectionTimeoutMS=settings.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
+        connectTimeoutMS=settings.MONGODB_CONNECT_TIMEOUT_MS,
+        socketTimeoutMS=settings.MONGODB_SOCKET_TIMEOUT_MS,
+    )
+
+
+async def _connect_with_retry() -> AsyncIOMotorDatabase:
+    global _client, _db
+    last_exception = None
+    for attempt in range(settings.MONGODB_MAX_RETRIES):
+        try:
+            _client = await _create_client()
+            _db = _client[settings.MONGODB_DB]
+            await _client.admin.command("ping")
+            log.info("Connected to MongoDB: %s", settings.MONGODB_DB)
+            return _db
+        except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+            last_exception = e
+            if attempt < settings.MONGODB_MAX_RETRIES - 1:
+                delay = settings.MONGODB_RETRY_BASE_DELAY * (2 ** attempt)
+                log.warning("MongoDB connection attempt %d failed: %s. Retrying in %.1fs...", 
+                           attempt + 1, e, delay)
+                await asyncio.sleep(delay)
+            else:
+                log.error("All %d MongoDB connection attempts failed", settings.MONGODB_MAX_RETRIES)
+    raise DatabaseUnavailableError(f"Failed to connect to MongoDB after {settings.MONGODB_MAX_RETRIES} attempts: {last_exception}") from last_exception
+
+
+async def _create_indexes(db: AsyncIOMotorDatabase) -> None:
+    index_specs = [
+        ("scans", [("created_at", DESCENDING)]),
+        ("scans", [("status", ASCENDING)]),
+        ("findings", [("scan_id", ASCENDING)]),
+        ("findings", [("severity", ASCENDING)]),
+        ("triage_runs", [("scan_id", ASCENDING)]),
+        ("triage_runs", [("created_at", DESCENDING)]),
+        ("progress_logs", [("scan_id", ASCENDING), ("timestamp", ASCENDING)]),
+    ]
+    for collection_name, keys in index_specs:
+        try:
+            await db[collection_name].create_index(keys)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Failed to create index on %s.%s: %s", collection_name, keys, e)
 
 
 async def connect_to_mongo() -> AsyncIOMotorDatabase:
-    global _client, _db
-    if _client is not None:
+    """Initialize connection lazily on first call."""
+    global _db
+    if _db is not None:
         return _db
-
-    try:
-        _client = AsyncIOMotorClient(settings.MONGODB_URI)
-        _db = _client[settings.MONGODB_DB]
-        # Test connection
-        await _client.admin.command("ping")
-        log.info("Connected to MongoDB: %s", settings.MONGODB_DB)
-
-        # Create indexes
-        await _db.scans.create_index([("created_at", DESCENDING)])
-        await _db.scans.create_index([("status", ASCENDING)])
-        await _db.findings.create_index([("scan_id", ASCENDING)])
-        await _db.findings.create_index([("severity", ASCENDING)])
-        await _db.triage_runs.create_index([("scan_id", ASCENDING)])
-        await _db.triage_runs.create_index([("created_at", DESCENDING)])
-        await _db.progress_logs.create_index([("scan_id", ASCENDING), ("timestamp", ASCENDING)])
-
-        return _db
-    except ConnectionFailure as e:
-        log.error("Failed to connect to MongoDB: %s", e)
-        raise
+    _db = await _connect_with_retry()
+    await _create_indexes(_db)
+    return _db
 
 
 async def close_mongo_connection() -> None:
@@ -50,5 +85,5 @@ async def close_mongo_connection() -> None:
 
 def get_db() -> AsyncIOMotorDatabase:
     if _db is None:
-        raise RuntimeError("Database not initialized. Call connect_to_mongo() first.")
+        raise DatabaseUnavailableError("Database not initialized. Call connect_to_mongo() first.")
     return _db

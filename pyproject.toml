@@ -37,6 +37,7 @@ dev = [
     "respx>=0.21",
     "rank_bm25>=0.2",
     "scipy>=1.10",
+    "mongomock-motor>=0.0.36",
 ]
 [project.scripts]
 vibeshield = "vibeshield.cli:app"

@@ -1,13 +1,20 @@
+
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):
     MONGODB_URI: str = "mongodb://localhost:27017"
     MONGODB_DB: str = "vibeshield"
+    MONGODB_MAX_RETRIES: int = 3
+    MONGODB_RETRY_BASE_DELAY: float = 0.5
+    MONGODB_MAX_POOL_SIZE: int = 10
+    MONGODB_MIN_POOL_SIZE: int = 1
+    MONGODB_SERVER_SELECTION_TIMEOUT_MS: int = 5000
+    MONGODB_CONNECT_TIMEOUT_MS: int = 10000
+    MONGODB_SOCKET_TIMEOUT_MS: int = 20000
     
     # Groq LLM
-    GROQ_API_KEY: Optional[str] = None
+    GROQ_API_KEY: str | None = None
     GROQ_MODEL: str = "llama-3.1-70b-versatile"
     GROQ_MAX_RETRIES: int = 3
     GROQ_TIMEOUT: float = 30.0

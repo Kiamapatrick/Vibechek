@@ -1,23 +1,33 @@
-from contextlib import asynccontextmanager
-from uuid import UUID, uuid4
-from datetime import datetime
-from typing import Optional, List
+import asyncio
 import logging
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Query, Path
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Path, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from sse_starlette.sse import EventSourceResponse
 
 from backend.config import settings
-from backend.database import connect_to_mongo, close_mongo_connection, get_db
+from backend.database import close_mongo_connection, connect_to_mongo, get_db
+from backend.exceptions import DatabaseUnavailableError
+from backend.jobs import run_baseline_triage, run_llm_triage, run_scan
 from backend.models import (
-    ScanRequest, ScanResponse, ScanCreate, ScanStatus, ScanProgress,
-    FindingResponse, SeverityLevel, TriageMode, TriageRunCreate,
-    TriageRunResponse, TriageCompareResponse, ReportFormat, TriageResult,
-    ProgressLog, TriageSource
+    FindingResponse,
+    ReportFormat,
+    ScanCreate,
+    ScanProgress,
+    ScanRequest,
+    ScanResponse,
+    ScanStatus,
+    SeverityLevel,
+    TriageCompareResponse,
+    TriageMode,
+    TriageResult,
+    TriageRunCreate,
+    TriageRunResponse,
 )
-from backend.jobs import run_scan, run_baseline_triage, run_llm_triage
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +55,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(DatabaseUnavailableError)
+async def database_unavailable_handler(request: Request, exc: DatabaseUnavailableError):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database temporarily unavailable"},
+    )
 
 
 # ===================== SCAN ENDPOINTS =====================
@@ -77,9 +95,9 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
     )
 
 
-@app.get("/api/scans", response_model=List[ScanResponse])
+@app.get("/api/scans", response_model=list[ScanResponse])
 async def list_scans(
-    status: Optional[ScanStatus] = None,
+    status: ScanStatus | None = None,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
@@ -176,11 +194,11 @@ async def scan_progress_stream(scan_id: UUID = Path(...)):
 
 # ===================== FINDINGS ENDPOINTS =====================
 
-@app.get("/api/scans/{scan_id}/findings", response_model=List[FindingResponse])
+@app.get("/api/scans/{scan_id}/findings", response_model=list[FindingResponse])
 async def get_findings(
     scan_id: UUID = Path(...),
-    severity: Optional[SeverityLevel] = None,
-    check: Optional[str] = None,
+    severity: SeverityLevel | None = None,
+    check: str | None = None,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
@@ -265,7 +283,7 @@ async def start_triage(
     )
 
 
-@app.get("/api/scans/{scan_id}/triage", response_model=List[TriageRunResponse])
+@app.get("/api/scans/{scan_id}/triage", response_model=list[TriageRunResponse])
 async def list_triage_runs(scan_id: UUID = Path(...)):
     """List all triage runs for a scan."""
     db = get_db()
@@ -381,7 +399,7 @@ async def regenerate_triage(
         mode=TriageMode.LLM,
         status="running",
         results=[],
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )
 
 
@@ -419,8 +437,9 @@ async def get_report(
 @app.get("/api/triage/kb-context")
 async def get_kb_context(finding_id: str = Query(...), scan_id: UUID = Query(...)):
     """Get KB context used for a finding's triage (Phase 2)."""
+    from vibeshield.models.finding import Evidence, Finding
+    from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel
     from vibeshield.triage.context.retriever import get_retriever
-    from vibeshield.models.finding import Finding, Evidence, SeverityLevel as CoreSeverityLevel
 
     db = get_db()
 
