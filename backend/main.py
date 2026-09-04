@@ -2,6 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Path, Query, Request
@@ -123,7 +124,7 @@ async def list_scans(
 
 
 @app.get("/api/scans/{scan_id}", response_model=ScanResponse)
-async def get_scan(scan_id: UUID = Path(...)):
+async def get_scan(scan_id: Annotated[UUID, Path(...)]):
     """Get scan details by ID."""
     db = await get_db()
     doc = await db.scans.find_one({"scan_id": str(scan_id)})
@@ -142,7 +143,7 @@ async def get_scan(scan_id: UUID = Path(...)):
 
 
 @app.get("/api/scans/{scan_id}/progress")
-async def scan_progress_stream(scan_id: UUID = Path(...)):
+async def scan_progress_stream(scan_id: Annotated[UUID, Path(...)]):
     """SSE stream for live scan progress."""
     db = await get_db()
 
@@ -195,11 +196,11 @@ async def scan_progress_stream(scan_id: UUID = Path(...)):
 
 @app.get("/api/scans/{scan_id}/findings", response_model=list[FindingResponse])
 async def get_findings(
-    scan_id: UUID = Path(...),
+    scan_id: Annotated[UUID, Path(...)],
     severity: SeverityLevel | None = None,
     check: str | None = None,
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Get findings for a scan with optional filters."""
     db = await get_db()
@@ -218,7 +219,7 @@ async def get_findings(
 
 
 @app.get("/api/scans/{scan_id}/findings/stats")
-async def get_findings_stats(scan_id: UUID = Path(...)):
+async def get_findings_stats(scan_id: Annotated[UUID, Path(...)]):
     """Get finding statistics (count by severity/check)."""
     db = await get_db()
 
@@ -245,8 +246,8 @@ async def get_findings_stats(scan_id: UUID = Path(...)):
 
 @app.post("/api/scans/{scan_id}/triage", response_model=TriageRunResponse, status_code=202)
 async def start_triage(
-    scan_id: UUID,
-    mode: TriageMode = Query(TriageMode.BASELINE),
+    scan_id: Annotated[UUID, Path(...)],
+    mode: Annotated[TriageMode, Query()] = TriageMode.BASELINE,
     background_tasks: BackgroundTasks = None,
 ):
     """Start a triage run (baseline or LLM)."""
@@ -283,7 +284,7 @@ async def start_triage(
 
 
 @app.get("/api/scans/{scan_id}/triage", response_model=list[TriageRunResponse])
-async def list_triage_runs(scan_id: UUID = Path(...)):
+async def list_triage_runs(scan_id: Annotated[UUID, Path(...)]):
     """List all triage runs for a scan."""
     db = await get_db()
 
@@ -304,7 +305,7 @@ async def list_triage_runs(scan_id: UUID = Path(...)):
 
 
 @app.get("/api/triage/{triage_id}", response_model=TriageRunResponse)
-async def get_triage(triage_id: UUID = Path(...)):
+async def get_triage(triage_id: Annotated[UUID, Path(...)]):
     """Get triage run details by ID."""
     db = await get_db()
     doc = await db.triage_runs.find_one({"triage_id": str(triage_id)})
@@ -324,7 +325,7 @@ async def get_triage(triage_id: UUID = Path(...)):
 
 
 @app.get("/api/scans/{scan_id}/triage/compare", response_model=TriageCompareResponse)
-async def compare_triage(scan_id: UUID = Path(...)):
+async def compare_triage(scan_id: Annotated[UUID, Path(...)]):
     """Compare baseline vs LLM triage results."""
     db = await get_db()
 
@@ -366,8 +367,8 @@ async def compare_triage(scan_id: UUID = Path(...)):
 
 @app.post("/api/triage/{triage_id}/regenerate", response_model=TriageRunResponse, status_code=202)
 async def regenerate_triage(
-    triage_id: UUID,
-    finding_id: str = Query(...),
+    triage_id: Annotated[UUID, Path(...)],
+    finding_id: Annotated[str, Query(...)],
     background_tasks: BackgroundTasks = None,
 ):
     """Regenerate triage for a single finding (LLM only)."""
@@ -406,8 +407,8 @@ async def regenerate_triage(
 
 @app.get("/api/scans/{scan_id}/report")
 async def get_report(
-    scan_id: UUID = Path(...),
-    format: ReportFormat = Query(ReportFormat.PLAIN),
+    scan_id: Annotated[UUID, Path(...)],
+    format: Annotated[ReportFormat, Query()] = ReportFormat.PLAIN,
 ):
     """Get scan report in plain text or JSON format."""
     db = await get_db()
@@ -434,7 +435,10 @@ async def get_report(
 # ===================== KB CONTEXT ENDPOINTS (Phase 2) =====================
 
 @app.get("/api/triage/kb-context")
-async def get_kb_context(finding_id: str = Query(...), scan_id: UUID = Query(...)):
+async def get_kb_context(
+    finding_id: Annotated[str, Query(...)],
+    scan_id: Annotated[UUID, Query(...)],
+):
     """Get KB context used for a finding's triage (Phase 2)."""
     from vibeshield.models.finding import Evidence, Finding
     from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel

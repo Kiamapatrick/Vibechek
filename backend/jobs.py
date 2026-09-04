@@ -1,21 +1,24 @@
-import asyncio
 import logging
-import traceback
-from datetime import datetime
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 from backend.database import get_db
 from backend.models import (
-    ScanCreate, ScanStatus, ScanProgress,
-    FindingResponse, SeverityLevel, TriageRunCreate,
-    TriageResult, TriageSource, TriageMode, ProgressLog
+    FindingResponse,
+    ProgressLog,
+    ScanCreate,
+    ScanProgress,
+    ScanStatus,
+    SeverityLevel,
+    TriageResult,
+    TriageRunCreate,
+    TriageSource,
 )
 
 log = logging.getLogger(__name__)
 
 
-async def log_progress(scan_id: UUID, level: str, message: str, stage: Optional[str] = None) -> None:
+async def log_progress(scan_id: UUID, level: str, message: str, stage: str | None = None) -> None:
     db = get_db()
     log_entry = ProgressLog(
         scan_id=scan_id,
@@ -30,11 +33,11 @@ async def log_progress(scan_id: UUID, level: str, message: str, stage: Optional[
 async def update_scan_status(
     scan_id: UUID,
     status: ScanStatus,
-    progress: Optional[ScanProgress] = None,
-    error: Optional[str] = None
+    progress: ScanProgress | None = None,
+    error: str | None = None
 ) -> None:
     db = get_db()
-    update = {"status": status.value, "updated_at": datetime.utcnow()}
+    update = {"status": status.value, "updated_at": datetime.now(UTC)}
     if progress:
         update["progress"] = progress.model_dump()
     if error:
@@ -45,10 +48,9 @@ async def update_scan_status(
 
 async def run_scan(scan_id: UUID, scan_data: ScanCreate) -> None:
     """Background task to run the scanner."""
-    from vibeshield.scanner.engine import ScannerEngine
+    from vibeshield.models.finding import Evidence
     from vibeshield.reporting.plain import PlainReporter
-    from vibeshield.reporting.json import JSONReporter
-    from vibeshield.models.finding import Finding, Evidence, SeverityLevel as CoreSeverityLevel
+    from vibeshield.scanner.engine import ScannerEngine
 
     db = get_db()
 
@@ -113,7 +115,7 @@ async def run_scan(scan_id: UUID, scan_data: ScanCreate) -> None:
                     "plain_report": PlainReporter.generate(plain_report),
                     "json_report": json_report.to_dict(),
                     "status": ScanStatus.COMPLETED.value,
-                    "updated_at": datetime.utcnow(),
+                    "updated_at": datetime.now(UTC),
                     "progress": ScanProgress(
                         pages_crawled=plain_report.scan_metadata.pages_crawled,
                         findings_found=len(findings)
@@ -125,15 +127,16 @@ async def run_scan(scan_id: UUID, scan_data: ScanCreate) -> None:
         await log_progress(scan_id, "info", "Scan completed successfully", "scan")
 
     except Exception as e:
-        log.exception("Scan %s failed: %s", scan_id, e)
+        log.exception("Scan %s failed", scan_id)
         await update_scan_status(scan_id, ScanStatus.FAILED, error=str(e))
         await log_progress(scan_id, "error", f"Scan failed: {e}", "scan")
 
 
 async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
     """Background task to run baseline triage."""
+    from vibeshield.models.finding import Evidence, Finding
+    from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel
     from vibeshield.triage.baseline import baseline_rank
-    from vibeshield.models.finding import Finding, Evidence, SeverityLevel as CoreSeverityLevel
 
     db = get_db()
 
@@ -176,7 +179,7 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
                 {
                     "$set": {
                         "status": "completed",
-                        "completed_at": datetime.utcnow(),
+                        "completed_at": datetime.now(UTC),
                         "results": []
                     }
                 }
@@ -210,7 +213,7 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
             {
                 "$set": {
                     "status": "completed",
-                    "completed_at": datetime.utcnow(),
+                    "completed_at": datetime.now(UTC),
                     "results": results
                 }
             }
@@ -219,13 +222,13 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
         await log_progress(scan_id, "info", f"Baseline triage completed: {len(results)} results", "triage")
 
     except Exception as e:
-        log.exception("Baseline triage %s failed: %s", triage_data.triage_id, e)
+        log.exception("Baseline triage %s failed", triage_data.triage_id)
         await db.triage_runs.update_one(
             {"triage_id": str(triage_data.triage_id)},
             {
                 "$set": {
                     "status": "failed",
-                    "completed_at": datetime.utcnow(),
+                    "completed_at": datetime.now(UTC),
                     "error": str(e)
                 }
             }
@@ -235,13 +238,10 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
 
 async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
     """Background task to run LLM triage with streaming support."""
+
+    from vibeshield.models.finding import Evidence, Finding
+    from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel
     from vibeshield.triage.orchestrator import run_triage
-    from vibeshield.triage.ingest import load_report
-    from vibeshield.models.report import JSONReport, ScanMetadata, FingerprintResult, Summary
-    from vibeshield.models.finding import Finding, Evidence, SeverityLevel as CoreSeverityLevel
-    import json
-    import tempfile
-    from pathlib import Path
 
     db = get_db()
 
@@ -284,7 +284,7 @@ async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
                 {
                     "$set": {
                         "status": "completed",
-                        "completed_at": datetime.utcnow(),
+                        "completed_at": datetime.now(UTC),
                         "results": []
                     }
                 }
@@ -318,7 +318,7 @@ async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
             {
                 "$set": {
                     "status": "completed",
-                    "completed_at": datetime.utcnow(),
+                    "completed_at": datetime.now(UTC),
                     "results": results
                 }
             }
@@ -327,13 +327,13 @@ async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
         await log_progress(scan_id, "info", f"LLM triage completed: {len(results)} results", "triage")
 
     except Exception as e:
-        log.exception("LLM triage %s failed: %s", triage_data.triage_id, e)
+        log.exception("LLM triage %s failed", triage_data.triage_id)
         await db.triage_runs.update_one(
             {"triage_id": str(triage_data.triage_id)},
             {
                 "$set": {
                     "status": "failed",
-                    "completed_at": datetime.utcnow(),
+                    "completed_at": datetime.now(UTC),
                     "error": str(e)
                 }
             }

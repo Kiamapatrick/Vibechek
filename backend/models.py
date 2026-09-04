@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import ClassVar, Literal
+from typing import Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class ScanStatus(str, Enum):
@@ -61,14 +61,14 @@ class ScanCreate(ScanRequest):
     scan_id: UUID = Field(default_factory=uuid4)
     status: ScanStatus = ScanStatus.PENDING
     progress: ScanProgress = Field(default_factory=ScanProgress)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     target_url: str  # Store as string for MongoDB
     error: str | None = None
 
-    class Config:
-        populate_by_name = True
-        json_encoders: ClassVar[dict] = {UUID: str}
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
 
 
 class Evidence(BaseModel):
@@ -98,7 +98,7 @@ class Finding(BaseModel):
 
 class FindingResponse(Finding):
     scan_id: UUID
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class TriageResult(BaseModel):
@@ -118,7 +118,7 @@ class TriageRunCreate(BaseModel):
     mode: TriageMode
     status: Literal["pending", "running", "completed", "failed"] = "pending"
     results: list[TriageResult] = []
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
     error: str | None = None
 
@@ -144,7 +144,7 @@ class ReportFormat(str, Enum):
 
 class ProgressLog(BaseModel):
     scan_id: UUID
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     level: str  # info, warning, error
     message: str
     stage: str | None = None  # crawl, check, triage, etc.

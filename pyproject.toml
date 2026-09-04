@@ -39,6 +39,12 @@ dev = [
     "scipy>=1.10",
     "mongomock-motor>=0.0.36",
 ]
+backend = [
+    "fastapi>=0.115",
+    "motor>=3.6",
+    "pymongo>=4.9",
+    "sse-starlette>=2.1",
+]
 [project.scripts]
 vibeshield = "vibeshield.cli:app"
 [build-system]
