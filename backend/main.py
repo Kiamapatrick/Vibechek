@@ -83,7 +83,7 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks) ->
         allow_write_tests=request.allow_write_tests,
     )
 
-    await db.scans.insert_one(scan_data.model_dump())
+    await db.scans.insert_one(scan_data.model_dump(mode="json"))
 
     background_tasks.add_task(run_scan, scan_data.scan_id, scan_data)
 
@@ -266,7 +266,7 @@ async def start_triage(
         mode=mode,
     )
 
-    await db.triage_runs.insert_one(triage_data.model_dump())
+    await db.triage_runs.insert_one(triage_data.model_dump(mode="json"))
 
     if background_tasks is not None:
         if mode == TriageMode.BASELINE:

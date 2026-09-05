@@ -40,7 +40,7 @@ async def log_progress(scan_id: UUID, level: str, message: str, stage: str | Non
         message=message,
         stage=stage
     )
-    await db.progress_logs.insert_one(log_entry.model_dump())
+    await db.progress_logs.insert_one(log_entry.model_dump(mode="json"))
     log.info("[%s] %s: %s", scan_id, level.upper(), message)
 
 
@@ -53,7 +53,7 @@ async def update_scan_status(
     db = await get_db()
     update: dict[str, Any] = {"status": status.value, "updated_at": datetime.now(UTC)}
     if progress:
-        update["progress"] = progress.model_dump()
+        update["progress"] = progress.model_dump(mode="json")
     if error:
         update["error"] = error
     await db.scans.update_one({"scan_id": str(scan_id)}, {"$set": update})
@@ -107,7 +107,7 @@ async def run_scan(scan_id: UUID, scan_data: ScanCreate) -> None:
                 references=f.references,
                 scan_id=scan_id,
             )
-            findings.append(finding.model_dump())
+            findings.append(finding.model_dump(mode="json"))
 
         # Store findings
         if findings:
@@ -125,7 +125,7 @@ async def run_scan(scan_id: UUID, scan_data: ScanCreate) -> None:
                     "progress": ScanProgress(
                         pages_crawled=plain_report.scan_metadata.pages_crawled,
                         findings_found=len(findings)
-                    ).model_dump()
+                    ).model_dump(mode="json")
                 }
             }
         )
@@ -211,7 +211,7 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
                 prompt_version=r.prompt_version,
                 original_severity=SeverityLevel(r.finding.severity.value),
             )
-            results.append(result.model_dump())
+            results.append(result.model_dump(mode="json"))
 
         # Store triage run
         await db.triage_runs.update_one(
@@ -316,7 +316,7 @@ async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
                 prompt_version=r.prompt_version,
                 original_severity=SeverityLevel(r.finding.severity.value),
             )
-            results.append(result.model_dump())
+            results.append(result.model_dump(mode="json"))
 
         # Store triage run
         await db.triage_runs.update_one(
