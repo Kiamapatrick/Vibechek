@@ -114,6 +114,7 @@ class TriageResult(BaseModel):
 
 
 class TriageRunCreate(BaseModel):
+    triage_id: UUID = Field(default_factory=uuid4)
     scan_id: UUID
     mode: TriageMode
     status: Literal["pending", "running", "completed", "failed"] = "pending"

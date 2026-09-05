@@ -1,8 +1,9 @@
 import asyncio
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Path, Query, Request
@@ -34,7 +35,7 @@ log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup - no DB connect; lazy on first request
     yield
     # Shutdown
@@ -58,7 +59,7 @@ app.add_middleware(
 
 
 @app.exception_handler(DatabaseUnavailableError)
-async def database_unavailable_handler(request: Request, exc: DatabaseUnavailableError):
+async def database_unavailable_handler(request: Request, exc: DatabaseUnavailableError) -> JSONResponse:
     return JSONResponse(
         status_code=503,
         content={"detail": "Database temporarily unavailable"},
@@ -68,11 +69,12 @@ async def database_unavailable_handler(request: Request, exc: DatabaseUnavailabl
 # ===================== SCAN ENDPOINTS =====================
 
 @app.post("/api/scans", response_model=ScanResponse, status_code=202)
-async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
+async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks) -> ScanResponse:
     """Start a new security scan."""
     db = await get_db()
 
     scan_data = ScanCreate(
+        url=request.url,
         scan_id=uuid4(),
         target_url=str(request.url),
         max_pages=request.max_pages,
@@ -100,7 +102,7 @@ async def list_scans(
     status: ScanStatus | None = None,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-):
+) -> list[ScanResponse]:
     """List all scans with optional filtering."""
     db = await get_db()
 
@@ -124,7 +126,7 @@ async def list_scans(
 
 
 @app.get("/api/scans/{scan_id}", response_model=ScanResponse)
-async def get_scan(scan_id: Annotated[UUID, Path(...)]):
+async def get_scan(scan_id: Annotated[UUID, Path(...)]) -> ScanResponse:
     """Get scan details by ID."""
     db = await get_db()
     doc = await db.scans.find_one({"scan_id": str(scan_id)})
@@ -143,7 +145,7 @@ async def get_scan(scan_id: Annotated[UUID, Path(...)]):
 
 
 @app.get("/api/scans/{scan_id}/progress")
-async def scan_progress_stream(scan_id: Annotated[UUID, Path(...)]):
+async def scan_progress_stream(scan_id: Annotated[UUID, Path(...)]) -> EventSourceResponse:
     """SSE stream for live scan progress."""
     db = await get_db()
 
@@ -152,16 +154,15 @@ async def scan_progress_stream(scan_id: Annotated[UUID, Path(...)]):
     if not doc:
         raise HTTPException(404, "Scan not found")
 
-    async def event_generator():
+    async def event_generator() -> AsyncGenerator[dict[str, Any], None]:
         last_log_id = None
         while True:
             # Check for new progress logs
-            cursor = db.progress_logs.find(
-                {"scan_id": str(scan_id)}
-            ).sort("timestamp", 1)
-
+            query: dict[str, Any] = {"scan_id": str(scan_id)}
             if last_log_id:
-                cursor = cursor.find({"_id": {"$gt": last_log_id}})
+                query["_id"] = {"$gt": last_log_id}
+
+            cursor = db.progress_logs.find(query).sort("timestamp", 1)
 
             async for log_doc in cursor:
                 last_log_id = log_doc["_id"]
@@ -201,7 +202,7 @@ async def get_findings(
     check: str | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
-):
+) -> list[FindingResponse]:
     """Get findings for a scan with optional filters."""
     db = await get_db()
 
@@ -219,15 +220,15 @@ async def get_findings(
 
 
 @app.get("/api/scans/{scan_id}/findings/stats")
-async def get_findings_stats(scan_id: Annotated[UUID, Path(...)]):
+async def get_findings_stats(scan_id: Annotated[UUID, Path(...)]) -> dict[str, dict[str, int]]:
     """Get finding statistics (count by severity/check)."""
     db = await get_db()
 
-    pipeline = [
+    pipeline: list[dict[str, Any]] = [
         {"$match": {"scan_id": str(scan_id)}},
         {"$group": {"_id": "$severity", "count": {"$sum": 1}}},
     ]
-    severity_stats = {}
+    severity_stats: dict[str, int] = {}
     async for doc in db.findings.aggregate(pipeline):
         severity_stats[doc["_id"]] = doc["count"]
 
@@ -235,7 +236,7 @@ async def get_findings_stats(scan_id: Annotated[UUID, Path(...)]):
         {"$match": {"scan_id": str(scan_id)}},
         {"$group": {"_id": "$check", "count": {"$sum": 1}}},
     ]
-    check_stats = {}
+    check_stats: dict[str, int] = {}
     async for doc in db.findings.aggregate(pipeline):
         check_stats[doc["_id"]] = doc["count"]
 
@@ -248,8 +249,8 @@ async def get_findings_stats(scan_id: Annotated[UUID, Path(...)]):
 async def start_triage(
     scan_id: Annotated[UUID, Path(...)],
     mode: Annotated[TriageMode, Query()] = TriageMode.BASELINE,
-    background_tasks: BackgroundTasks = None,
-):
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
+) -> TriageRunResponse:
     """Start a triage run (baseline or LLM)."""
     db = await get_db()
 
@@ -261,17 +262,17 @@ async def start_triage(
         raise HTTPException(400, f"Scan not completed (status: {scan['status']})")
 
     triage_data = TriageRunCreate(
-        triage_id=uuid4(),
         scan_id=scan_id,
         mode=mode,
     )
 
     await db.triage_runs.insert_one(triage_data.model_dump())
 
-    if mode == TriageMode.BASELINE:
-        background_tasks.add_task(run_baseline_triage, scan_id, triage_data)
-    else:
-        background_tasks.add_task(run_llm_triage, scan_id, triage_data)
+    if background_tasks is not None:
+        if mode == TriageMode.BASELINE:
+            background_tasks.add_task(run_baseline_triage, scan_id, triage_data)
+        else:
+            background_tasks.add_task(run_llm_triage, scan_id, triage_data)
 
     return TriageRunResponse(
         triage_id=triage_data.triage_id,
@@ -284,7 +285,7 @@ async def start_triage(
 
 
 @app.get("/api/scans/{scan_id}/triage", response_model=list[TriageRunResponse])
-async def list_triage_runs(scan_id: Annotated[UUID, Path(...)]):
+async def list_triage_runs(scan_id: Annotated[UUID, Path(...)]) -> list[TriageRunResponse]:
     """List all triage runs for a scan."""
     db = await get_db()
 
@@ -305,7 +306,7 @@ async def list_triage_runs(scan_id: Annotated[UUID, Path(...)]):
 
 
 @app.get("/api/triage/{triage_id}", response_model=TriageRunResponse)
-async def get_triage(triage_id: Annotated[UUID, Path(...)]):
+async def get_triage(triage_id: Annotated[UUID, Path(...)]) -> TriageRunResponse:
     """Get triage run details by ID."""
     db = await get_db()
     doc = await db.triage_runs.find_one({"triage_id": str(triage_id)})
@@ -325,7 +326,7 @@ async def get_triage(triage_id: Annotated[UUID, Path(...)]):
 
 
 @app.get("/api/scans/{scan_id}/triage/compare", response_model=TriageCompareResponse)
-async def compare_triage(scan_id: Annotated[UUID, Path(...)]):
+async def compare_triage(scan_id: Annotated[UUID, Path(...)]) -> TriageCompareResponse:
     """Compare baseline vs LLM triage results."""
     db = await get_db()
 
@@ -369,8 +370,8 @@ async def compare_triage(scan_id: Annotated[UUID, Path(...)]):
 async def regenerate_triage(
     triage_id: Annotated[UUID, Path(...)],
     finding_id: Annotated[str, Query(...)],
-    background_tasks: BackgroundTasks = None,
-):
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
+) -> TriageRunResponse:
     """Regenerate triage for a single finding (LLM only)."""
     db = await get_db()
 
@@ -387,11 +388,11 @@ async def regenerate_triage(
 
     # For now, re-run full LLM triage (in Phase 2, implement per-finding regen)
     # This is a placeholder - would need orchestrator modification for single finding
-    background_tasks.add_task(run_llm_triage, UUID(triage["scan_id"]), TriageRunCreate(
-        triage_id=uuid4(),
-        scan_id=UUID(triage["scan_id"]),
-        mode=TriageMode.LLM,
-    ))
+    if background_tasks is not None:
+        background_tasks.add_task(run_llm_triage, UUID(triage["scan_id"]), TriageRunCreate(
+            scan_id=UUID(triage["scan_id"]),
+            mode=TriageMode.LLM,
+        ))
 
     return TriageRunResponse(
         triage_id=triage_id,
@@ -409,7 +410,7 @@ async def regenerate_triage(
 async def get_report(
     scan_id: Annotated[UUID, Path(...)],
     format: Annotated[ReportFormat, Query()] = ReportFormat.PLAIN,
-) -> PlainTextResponse | dict:
+) -> PlainTextResponse | dict[str, Any]:
     """Get scan report in plain text or JSON format."""
     db = await get_db()
 
@@ -418,17 +419,17 @@ async def get_report(
         raise HTTPException(404, "Scan not found")
 
     if format == ReportFormat.PLAIN:
-        report = scan.get("plain_report", "Report not available")
-        return PlainTextResponse(report, media_type="text/plain")
+        plain_report = scan.get("plain_report", "Report not available")
+        return PlainTextResponse(plain_report, media_type="text/plain")
     elif format == ReportFormat.JSON:
-        report = scan.get("json_report", {})
-        return report
+        json_report: dict[str, Any] = scan.get("json_report", {})
+        return json_report
     else:  # BOTH
         plain = scan.get("plain_report", "Report not available")
-        json_report = scan.get("json_report", {})
+        json_data: dict[str, Any] = scan.get("json_report", {})
         return {
             "plain": plain,
-            "json": json_report,
+            "json": json_data,
         }
 
 
@@ -438,7 +439,7 @@ async def get_report(
 async def get_kb_context(
     finding_id: Annotated[str, Query(...)],
     scan_id: Annotated[UUID, Query(...)],
-) -> dict:
+) -> dict[str, Any]:
     """Get KB context used for a finding's triage (Phase 2)."""
     from vibeshield.models.finding import Evidence, Finding
     from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel

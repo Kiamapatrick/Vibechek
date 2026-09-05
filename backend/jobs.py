@@ -1,9 +1,11 @@
 import logging
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from backend.database import get_db
 from backend.models import (
+    Evidence,
     FindingResponse,
     ProgressLog,
     ScanCreate,
@@ -14,12 +16,24 @@ from backend.models import (
     TriageRunCreate,
     TriageSource,
 )
+from vibeshield.models.finding import Evidence as CoreEvidence
 
 log = logging.getLogger(__name__)
 
 
+def _to_api_evidence(e: CoreEvidence) -> Evidence:
+    return Evidence(
+        url=e.url,
+        snippet=e.snippet,
+        matched_pattern=e.matched_pattern,
+        request_headers=e.request_headers,
+        response_headers=e.response_headers,
+        response_status=e.response_status,
+    )
+
+
 async def log_progress(scan_id: UUID, level: str, message: str, stage: str | None = None) -> None:
-    db = get_db()
+    db = await get_db()
     log_entry = ProgressLog(
         scan_id=scan_id,
         level=level,
@@ -36,8 +50,8 @@ async def update_scan_status(
     progress: ScanProgress | None = None,
     error: str | None = None
 ) -> None:
-    db = get_db()
-    update = {"status": status.value, "updated_at": datetime.now(UTC)}
+    db = await get_db()
+    update: dict[str, Any] = {"status": status.value, "updated_at": datetime.now(UTC)}
     if progress:
         update["progress"] = progress.model_dump()
     if error:
@@ -48,11 +62,10 @@ async def update_scan_status(
 
 async def run_scan(scan_id: UUID, scan_data: ScanCreate) -> None:
     """Background task to run the scanner."""
-    from vibeshield.models.finding import Evidence
     from vibeshield.reporting.plain import PlainReporter
     from vibeshield.scanner.engine import ScannerEngine
 
-    db = get_db()
+    db = await get_db()
 
     try:
         await update_scan_status(scan_id, ScanStatus.RUNNING)
@@ -77,14 +90,7 @@ async def run_scan(scan_id: UUID, scan_data: ScanCreate) -> None:
         # Convert findings to our API models
         findings = []
         for f in json_report.findings:
-            evidence = Evidence(
-                url=f.evidence.url,
-                snippet=f.evidence.snippet,
-                matched_pattern=f.evidence.matched_pattern,
-                request_headers=f.evidence.request_headers,
-                response_headers=f.evidence.response_headers,
-                response_status=f.evidence.response_status,
-            )
+            evidence = _to_api_evidence(f.evidence)
             finding = FindingResponse(
                 id=f.id,
                 check=f.check,
@@ -134,11 +140,11 @@ async def run_scan(scan_id: UUID, scan_data: ScanCreate) -> None:
 
 async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
     """Background task to run baseline triage."""
-    from vibeshield.models.finding import Evidence, Finding
+    from vibeshield.models.finding import Finding
     from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel
     from vibeshield.triage.baseline import baseline_rank
 
-    db = get_db()
+    db = await get_db()
 
     try:
         await log_progress(scan_id, "info", "Starting baseline triage...", "triage")
@@ -147,7 +153,7 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
         findings_cursor = db.findings.find({"scan_id": str(scan_id)})
         findings = []
         async for doc in findings_cursor:
-            evidence = Evidence(
+            core_evidence = CoreEvidence(
                 url=doc["evidence"]["url"],
                 snippet=doc["evidence"]["snippet"],
                 matched_pattern=doc["evidence"].get("matched_pattern"),
@@ -165,7 +171,7 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
                 likelihood=doc["likelihood"],
                 wstg_id=doc.get("wstg_id"),
                 attck_ids=doc.get("attck_ids", []),
-                evidence=evidence,
+                evidence=core_evidence,
                 confidence=doc["confidence"],
                 remediation=doc["remediation"],
                 references=doc.get("references", []),
@@ -239,11 +245,11 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
 async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
     """Background task to run LLM triage with streaming support."""
 
-    from vibeshield.models.finding import Evidence, Finding
+    from vibeshield.models.finding import Finding
     from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel
     from vibeshield.triage.orchestrator import run_triage
 
-    db = get_db()
+    db = await get_db()
 
     try:
         await log_progress(scan_id, "info", "Starting LLM triage...", "triage")
@@ -252,7 +258,7 @@ async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
         findings_cursor = db.findings.find({"scan_id": str(scan_id)})
         findings = []
         async for doc in findings_cursor:
-            evidence = Evidence(
+            core_evidence = CoreEvidence(
                 url=doc["evidence"]["url"],
                 snippet=doc["evidence"]["snippet"],
                 matched_pattern=doc["evidence"].get("matched_pattern"),
@@ -270,7 +276,7 @@ async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
                 likelihood=doc["likelihood"],
                 wstg_id=doc.get("wstg_id"),
                 attck_ids=doc.get("attck_ids", []),
-                evidence=evidence,
+                evidence=core_evidence,
                 confidence=doc["confidence"],
                 remediation=doc["remediation"],
                 references=doc.get("references", []),
