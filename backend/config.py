@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    # SSE Streaming
+    SSE_STREAM_MAX_DURATION_SECONDS: int = 600
+    SSE_STREAM_POLL_INTERVAL_SECONDS: float = 1.0
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

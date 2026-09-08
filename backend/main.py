@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -156,7 +157,19 @@ async def scan_progress_stream(scan_id: Annotated[UUID, Path(...)]) -> EventSour
 
     async def event_generator() -> AsyncGenerator[dict[str, Any], None]:
         last_log_id = None
+        start_time = time.monotonic()
+        max_duration = settings.SSE_STREAM_MAX_DURATION_SECONDS
+        poll_interval = settings.SSE_STREAM_POLL_INTERVAL_SECONDS
+
         while True:
+            # Safety bound: timeout if stream runs too long (e.g., stuck job)
+            if time.monotonic() - start_time > max_duration:
+                yield {
+                    "event": "timeout",
+                    "data": {"message": f"Stream timeout after {max_duration}s"}
+                }
+                break
+
             # Check for new progress logs
             query: dict[str, Any] = {"scan_id": str(scan_id)}
             if last_log_id:
@@ -169,7 +182,7 @@ async def scan_progress_stream(scan_id: Annotated[UUID, Path(...)]) -> EventSour
                 yield {
                     "event": "progress",
                     "data": {
-                        "timestamp": log_doc["timestamp"].isoformat(),
+                        "timestamp": log_doc["timestamp"],
                         "level": log_doc["level"],
                         "message": log_doc["message"],
                         "stage": log_doc.get("stage"),
@@ -188,7 +201,7 @@ async def scan_progress_stream(scan_id: Annotated[UUID, Path(...)]) -> EventSour
                 }
                 break
 
-            await asyncio.sleep(1)
+            await asyncio.sleep(poll_interval)
 
     return EventSourceResponse(event_generator())
 
