@@ -3,7 +3,6 @@ import logging
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
@@ -261,8 +260,8 @@ async def get_findings_stats(scan_id: Annotated[UUID, Path(...)]) -> dict[str, d
 @app.post("/api/scans/{scan_id}/triage", response_model=TriageRunResponse, status_code=202)
 async def start_triage(
     scan_id: Annotated[UUID, Path(...)],
+    background_tasks: BackgroundTasks,
     mode: Annotated[TriageMode, Query()] = TriageMode.BASELINE,
-    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
 ) -> TriageRunResponse:
     """Start a triage run (baseline or LLM)."""
     db = await get_db()
@@ -318,136 +317,7 @@ async def list_triage_runs(scan_id: Annotated[UUID, Path(...)]) -> list[TriageRu
     return runs
 
 
-@app.get("/api/triage/{triage_id}", response_model=TriageRunResponse)
-async def get_triage(triage_id: Annotated[UUID, Path(...)]) -> TriageRunResponse:
-    """Get triage run details by ID."""
-    db = await get_db()
-    doc = await db.triage_runs.find_one({"triage_id": str(triage_id)})
-    if not doc:
-        raise HTTPException(404, "Triage run not found")
-
-    return TriageRunResponse(
-        triage_id=UUID(doc["triage_id"]),
-        scan_id=UUID(doc["scan_id"]),
-        mode=TriageMode(doc["mode"]),
-        status=doc["status"],
-        results=[TriageResult(**r) for r in doc.get("results", [])],
-        created_at=doc["created_at"],
-        completed_at=doc.get("completed_at"),
-        error=doc.get("error"),
-    )
-
-
-@app.get("/api/scans/{scan_id}/triage/compare", response_model=TriageCompareResponse)
-async def compare_triage(scan_id: Annotated[UUID, Path(...)]) -> TriageCompareResponse:
-    """Compare baseline vs LLM triage results."""
-    db = await get_db()
-
-    baseline_run = await db.triage_runs.find_one(
-        {"scan_id": str(scan_id), "mode": "baseline"},
-        sort=[("created_at", -1)]
-    )
-    llm_run = await db.triage_runs.find_one(
-        {"scan_id": str(scan_id), "mode": "llm"},
-        sort=[("created_at", -1)]
-    )
-
-    baseline_results = [TriageResult(**r) for r in baseline_run.get("results", [])] if baseline_run else []
-    llm_results = [TriageResult(**r) for r in llm_run.get("results", [])] if llm_run else []
-
-    baseline_ids = {r.finding_id for r in baseline_results}
-    llm_ids = {r.finding_id for r in llm_results}
-
-    # Find changed priorities
-    changed = []
-    for b in baseline_results:
-        for l in llm_results:
-            if b.finding_id == l.finding_id and b.revised_priority != l.revised_priority:
-                changed.append({
-                    "finding_id": b.finding_id,
-                    "baseline_priority": b.revised_priority,
-                    "llm_priority": l.revised_priority,
-                })
-
-    return TriageCompareResponse(
-        scan_id=scan_id,
-        baseline=baseline_results,
-        llm=llm_results,
-        baseline_only=list(baseline_ids - llm_ids),
-        llm_only=list(llm_ids - baseline_ids),
-        changed_priority=changed,
-    )
-
-
-@app.post("/api/triage/{triage_id}/regenerate", response_model=TriageRunResponse, status_code=202)
-async def regenerate_triage(
-    triage_id: Annotated[UUID, Path(...)],
-    finding_id: Annotated[str, Query(...)],
-    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
-) -> TriageRunResponse:
-    """Regenerate triage for a single finding (LLM only)."""
-    db = await get_db()
-
-    triage = await db.triage_runs.find_one({"triage_id": str(triage_id)})
-    if not triage:
-        raise HTTPException(404, "Triage run not found")
-    if triage["mode"] != "llm":
-        raise HTTPException(400, "Can only regenerate LLM triage runs")
-
-    # Find the specific finding
-    finding_doc = await db.findings.find_one({"scan_id": triage["scan_id"], "id": finding_id})
-    if not finding_doc:
-        raise HTTPException(404, "Finding not found")
-
-    # For now, re-run full LLM triage (in Phase 2, implement per-finding regen)
-    # This is a placeholder - would need orchestrator modification for single finding
-    if background_tasks is not None:
-        background_tasks.add_task(run_llm_triage, UUID(triage["scan_id"]), TriageRunCreate(
-            scan_id=UUID(triage["scan_id"]),
-            mode=TriageMode.LLM,
-        ))
-
-    return TriageRunResponse(
-        triage_id=triage_id,
-        scan_id=UUID(triage["scan_id"]),
-        mode=TriageMode.LLM,
-        status="running",
-        results=[],
-        created_at=datetime.now(UTC),
-    )
-
-
-# ===================== REPORT ENDPOINTS =====================
-
-@app.get("/api/scans/{scan_id}/report", response_model=None)
-async def get_report(
-    scan_id: Annotated[UUID, Path(...)],
-    format: Annotated[ReportFormat, Query()] = ReportFormat.PLAIN,
-) -> PlainTextResponse | dict[str, Any]:
-    """Get scan report in plain text or JSON format."""
-    db = await get_db()
-
-    scan = await db.scans.find_one({"scan_id": str(scan_id)})
-    if not scan:
-        raise HTTPException(404, "Scan not found")
-
-    if format == ReportFormat.PLAIN:
-        plain_report = scan.get("plain_report", "Report not available")
-        return PlainTextResponse(plain_report, media_type="text/plain")
-    elif format == ReportFormat.JSON:
-        json_report: dict[str, Any] = scan.get("json_report", {})
-        return json_report
-    else:  # BOTH
-        plain = scan.get("plain_report", "Report not available")
-        json_data: dict[str, Any] = scan.get("json_report", {})
-        return {
-            "plain": plain,
-            "json": json_data,
-        }
-
-
-# ===================== KB CONTEXT ENDPOINTS (Phase 2) =====================
-
+# KB Context endpoint must come before /api/triage/{triage_id} to avoid path parameter capture
 @app.get("/api/triage/kb-context")
 async def get_kb_context(
     finding_id: Annotated[str, Query(...)],
@@ -503,6 +373,128 @@ async def get_kb_context(
             for c in context
         ],
     }
+
+
+@app.get("/api/triage/{triage_id}", response_model=TriageRunResponse)
+async def get_triage(triage_id: Annotated[UUID, Path(...)]) -> TriageRunResponse:
+    """Get triage run details by ID."""
+    db = await get_db()
+    doc = await db.triage_runs.find_one({"triage_id": str(triage_id)})
+    if not doc:
+        raise HTTPException(404, "Triage run not found")
+
+    return TriageRunResponse(
+        triage_id=UUID(doc["triage_id"]),
+        scan_id=UUID(doc["scan_id"]),
+        mode=TriageMode(doc["mode"]),
+        status=doc["status"],
+        results=[TriageResult(**r) for r in doc.get("results", [])],
+        created_at=doc["created_at"],
+        completed_at=doc.get("completed_at"),
+        error=doc.get("error"),
+    )
+
+
+@app.get("/api/scans/{scan_id}/triage/compare", response_model=TriageCompareResponse)
+async def compare_triage(scan_id: Annotated[UUID, Path(...)]) -> TriageCompareResponse:
+    """Compare baseline vs LLM triage results."""
+    db = await get_db()
+
+    baseline_run = await db.triage_runs.find_one(
+        {"scan_id": str(scan_id), "mode": "baseline"},
+        sort=[("created_at", -1)]
+    )
+    llm_run = await db.triage_runs.find_one(
+        {"scan_id": str(scan_id), "mode": "llm"},
+        sort=[("created_at", -1)]
+    )
+
+    baseline_results = [TriageResult(**r) for r in baseline_run.get("results", [])] if baseline_run else []
+    llm_results = [TriageResult(**r) for r in llm_run.get("results", [])] if llm_run else []
+
+    baseline_ids = {r.finding_id for r in baseline_results}
+    llm_ids = {r.finding_id for r in llm_results}
+
+    # Find changed priorities using dict lookup (O(n + m) instead of O(n * m))
+    llm_by_id = {r.finding_id: r for r in llm_results}
+    changed = [
+        {
+            "finding_id": b.finding_id,
+            "baseline_priority": b.revised_priority,
+            "llm_priority": llm_by_id[b.finding_id].revised_priority,
+        }
+        for b in baseline_results
+        if b.finding_id in llm_by_id and b.revised_priority != llm_by_id[b.finding_id].revised_priority
+    ]
+
+    return TriageCompareResponse(
+        scan_id=scan_id,
+        baseline=baseline_results,
+        llm=llm_results,
+        baseline_only=list(baseline_ids - llm_ids),
+        llm_only=list(llm_ids - baseline_ids),
+        changed_priority=changed,
+    )
+
+
+@app.post("/api/triage/{triage_id}/regenerate", response_model=TriageRunResponse, status_code=202)
+async def regenerate_triage(
+    triage_id: Annotated[UUID, Path(...)],
+    finding_id: Annotated[str, Query(...)],
+    background_tasks: BackgroundTasks,
+) -> TriageRunResponse:
+    """Regenerate triage for a single finding (LLM only)."""
+    db = await get_db()
+
+    triage = await db.triage_runs.find_one({"triage_id": str(triage_id)})
+    if not triage:
+        raise HTTPException(404, "Triage run not found")
+    if triage["mode"] != "llm":
+        raise HTTPException(400, "Can only regenerate LLM triage runs")
+
+    # Find the specific finding
+    finding_doc = await db.findings.find_one({"scan_id": triage["scan_id"], "id": finding_id})
+    if not finding_doc:
+        raise HTTPException(404, "Finding not found")
+
+    # Not yet implemented — single-finding regeneration requires orchestrator changes.
+    # Caller should use POST /api/scans/{scan_id}/triage with mode=llm for full re-triage.
+    raise HTTPException(
+        status_code=501,
+        detail=(
+            "Single-finding regeneration not yet implemented; "
+            "use POST /api/scans/{scan_id}/triage with mode=llm for full re-triage"
+        ).format(scan_id=triage["scan_id"]),
+    )
+
+
+# ===================== REPORT ENDPOINTS =====================
+
+@app.get("/api/scans/{scan_id}/report", response_model=None)
+async def get_report(
+    scan_id: Annotated[UUID, Path(...)],
+    format: Annotated[ReportFormat, Query()] = ReportFormat.PLAIN,
+) -> PlainTextResponse | dict[str, Any]:
+    """Get scan report in plain text or JSON format."""
+    db = await get_db()
+
+    scan = await db.scans.find_one({"scan_id": str(scan_id)})
+    if not scan:
+        raise HTTPException(404, "Scan not found")
+
+    if format == ReportFormat.PLAIN:
+        plain_report = scan.get("plain_report", "Report not available")
+        return PlainTextResponse(plain_report, media_type="text/plain")
+    elif format == ReportFormat.JSON:
+        json_report: dict[str, Any] = scan.get("json_report", {})
+        return json_report
+    else:  # BOTH
+        plain = scan.get("plain_report", "Report not available")
+        json_data: dict[str, Any] = scan.get("json_report", {})
+        return {
+            "plain": plain,
+            "json": json_data,
+        }
 
 
 # ===================== HEALTH =====================
