@@ -5,11 +5,11 @@ Mocks time.monotonic() and asyncio.sleep() for fast, deterministic timeout tests
 """
 
 from datetime import UTC, datetime
-from uuid import uuid4
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
-import pytest
 import httpx
+import pytest
 from httpx import ASGITransport
 
 from backend.config import settings
@@ -31,6 +31,7 @@ async def mock_db():
     """Replace the global DB connection with mongomock for each test."""
     reset_connection_state()
     from mongomock_motor import AsyncMongoMockClient
+
     import backend.database as database_module
 
     client = AsyncMongoMockClient()
@@ -162,11 +163,13 @@ class TestSSEProgressStream:
 
         # Mock time.monotonic in backend.main only to return same value (no timeout)
         # Use a context manager to limit scope
-        with patch("backend.main.time.monotonic", return_value=0.0):
-            with patch("asyncio.sleep", side_effect=controlled_sleep):
-                async with async_client.stream("GET", f"/api/scans/{scan_id}/progress") as response:
-                    assert response.status_code == 200
-                    events = await _parse_sse_lines(response)
+        with (
+            patch("backend.main.time.monotonic", return_value=0.0),
+            patch("asyncio.sleep", side_effect=controlled_sleep),
+        ):
+            async with async_client.stream("GET", f"/api/scans/{scan_id}/progress") as response:
+                assert response.status_code == 200
+                events = await _parse_sse_lines(response)
 
         # Should have: progress event(s) then complete event
         assert len(events) >= 2
@@ -199,11 +202,13 @@ class TestSSEProgressStream:
         time_iter = iter(time_values)
 
         # Use context managers to limit patch scope to the test body only
-        with patch("backend.main.time.monotonic", side_effect=mock_monotonic):
-            with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-                async with async_client.stream("GET", f"/api/scans/{scan_id}/progress") as response:
-                    assert response.status_code == 200
-                    events = await _parse_sse_lines(response)
+        with (
+            patch("backend.main.time.monotonic", side_effect=mock_monotonic),
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
+            async with async_client.stream("GET", f"/api/scans/{scan_id}/progress") as response:
+                assert response.status_code == 200
+                events = await _parse_sse_lines(response)
 
         # Should have timeout event as last event
         assert len(events) >= 1
@@ -247,11 +252,13 @@ class TestSSEProgressStream:
             return 100.0  # After test values, return large to avoid further issues
 
         try:
-            with patch("backend.main.time.monotonic", side_effect=mock_monotonic):
-                with patch("asyncio.sleep", new_callable=AsyncMock):
-                    async with async_client.stream("GET", f"/api/scans/{scan_id}/progress") as response:
-                        assert response.status_code == 200
-                        events = await _parse_sse_lines(response)
+            with (
+                patch("backend.main.time.monotonic", side_effect=mock_monotonic),
+                patch("asyncio.sleep", new_callable=AsyncMock),
+            ):
+                async with async_client.stream("GET", f"/api/scans/{scan_id}/progress") as response:
+                    assert response.status_code == 200
+                    events = await _parse_sse_lines(response)
         finally:
             settings.SSE_STREAM_MAX_DURATION_SECONDS = original_max
 
