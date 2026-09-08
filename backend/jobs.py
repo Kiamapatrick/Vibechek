@@ -161,6 +161,11 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
                 response_headers=doc["evidence"].get("response_headers", {}),
                 response_status=doc["evidence"].get("response_status"),
             )
+            wstg_id = doc.get("wstg_id")
+            if wstg_id is None:
+                log.warning(f"Finding {doc.get('id')} missing wstg_id (stale/legacy document) — using placeholder")
+                wstg_id = "UNKNOWN"
+
             finding = Finding(
                 id=doc["id"],
                 check=doc["check"],
@@ -169,7 +174,7 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
                 score=doc["score"],
                 impact=doc["impact"],
                 likelihood=doc["likelihood"],
-                wstg_id=doc.get("wstg_id"),
+                wstg_id=wstg_id,
                 attck_ids=doc.get("attck_ids", []),
                 evidence=core_evidence,
                 confidence=doc["confidence"],
@@ -266,6 +271,11 @@ async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
                 response_headers=doc["evidence"].get("response_headers", {}),
                 response_status=doc["evidence"].get("response_status"),
             )
+            wstg_id = doc.get("wstg_id")
+            if wstg_id is None:
+                log.warning(f"Finding {doc.get('id')} missing wstg_id (stale/legacy document) — using placeholder")
+                wstg_id = "UNKNOWN"
+
             finding = Finding(
                 id=doc["id"],
                 check=doc["check"],
@@ -274,7 +284,7 @@ async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
                 score=doc["score"],
                 impact=doc["impact"],
                 likelihood=doc["likelihood"],
-                wstg_id=doc.get("wstg_id"),
+                wstg_id=wstg_id,
                 attck_ids=doc.get("attck_ids", []),
                 evidence=core_evidence,
                 confidence=doc["confidence"],

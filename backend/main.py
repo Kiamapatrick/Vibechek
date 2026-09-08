@@ -451,6 +451,11 @@ async def get_kb_context(
     if not finding_doc:
         raise HTTPException(404, "Finding not found")
 
+    wstg_id = finding_doc.get("wstg_id")
+    if wstg_id is None:
+        log.warning(f"Finding {finding_doc.get('id')} missing wstg_id (stale/legacy document) — using placeholder")
+        wstg_id = "UNKNOWN"
+
     evidence = Evidence(
         url=finding_doc["evidence"]["url"],
         snippet=finding_doc["evidence"]["snippet"],
@@ -467,7 +472,7 @@ async def get_kb_context(
         score=finding_doc["score"],
         impact=finding_doc["impact"],
         likelihood=finding_doc["likelihood"],
-        wstg_id=finding_doc.get("wstg_id"),
+        wstg_id=wstg_id,
         attck_ids=finding_doc.get("attck_ids", []),
         evidence=evidence,
         confidence=finding_doc["confidence"],

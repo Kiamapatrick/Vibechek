@@ -12,7 +12,7 @@ import pytest
 from mongomock_motor import AsyncMongoMockClient
 
 from backend.database import reset_connection_state
-from backend.jobs import log_progress, run_baseline_triage, update_scan_status
+from backend.jobs import log_progress, run_baseline_triage, run_llm_triage, update_scan_status
 from backend.models import (
     ScanCreate,
     ScanProgress,
@@ -179,7 +179,7 @@ async def test_update_scan_status_serializes_progress(mock_db):
     )
     await mock_db.scans.insert_one(scan_data.model_dump(mode="json"))
 
-    # Update with progress containing findings_found (int) and current_url (str)
+# Update with progress containing findings_found (int) and current_url (str)
     progress = ScanProgress(
         pages_crawled=5,
         current_check="test_check",
@@ -196,3 +196,160 @@ async def test_update_scan_status_serializes_progress(mock_db):
     assert doc["progress"]["pages_crawled"] == 5
     assert doc["progress"]["current_url"] == "https://example.com/page"
     assert doc["progress"]["findings_found"] == 3
+
+
+@pytest.mark.asyncio
+async def test_run_baseline_triage_handles_missing_wstg_id(mock_db, caplog):
+    """run_baseline_triage() handles stale findings missing wstg_id by substituting "UNKNOWN" and logging warning.
+
+    This tests the defensive boundary handling for legacy documents that may lack
+    the wstg_id field (added after those documents were created).
+    """
+    scan_id = uuid4()
+
+    # Create a scan document (prerequisite for triage)
+    scan_data = ScanCreate(
+        scan_id=scan_id,
+        url="https://example.com",
+        max_pages=10,
+        max_depth=1,
+        timeout=10.0,
+        allow_write_tests=False,
+        status=ScanStatus.COMPLETED,
+        progress=ScanProgress(),
+        target_url="https://example.com",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    await mock_db.scans.insert_one(scan_data.model_dump(mode="json"))
+
+    # Insert a finding WITHOUT wstg_id (stale/legacy document)
+    finding_id = "finding-legacy-123"
+    finding_doc = {
+        "id": finding_id,
+        "scan_id": str(scan_id),
+        "check": "test_check",
+        "title": "Legacy Finding",
+        "severity": SeverityLevel.HIGH.value,
+        "score": 75,
+        "impact": 4,
+        "likelihood": 4,
+        # wstg_id intentionally omitted - this is the bug scenario
+        "attck_ids": ["T1234"],
+        "evidence": {
+            "url": "https://example.com/test",
+            "snippet": "test evidence",
+            "matched_pattern": "pattern",
+            "request_headers": {},
+            "response_headers": {},
+            "response_status": 200,
+        },
+        "confidence": 0.9,
+        "remediation": "Fix it",
+        "references": ["https://example.com/ref"],
+    }
+    await mock_db.findings.insert_one(finding_doc)
+
+    # Create triage run and INSERT it first
+    triage_data = TriageRunCreate(
+        scan_id=scan_id,
+        mode=TriageMode.BASELINE,
+    )
+    await mock_db.triage_runs.insert_one(triage_data.model_dump(mode="json"))
+
+    # Should not raise - wstg_id missing should be handled gracefully
+    await run_baseline_triage(scan_id, triage_data)
+
+    # Verify triage completed successfully
+    triage_doc = await mock_db.triage_runs.find_one({"triage_id": str(triage_data.triage_id)})
+    assert triage_doc is not None
+    assert triage_doc["status"] == "completed"
+    assert len(triage_doc["results"]) == 1
+
+    # Verify WARNING was logged about missing wstg_id
+    warning_logs = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warning_logs) >= 1
+    assert any("missing wstg_id" in r.message and finding_id in r.message for r in warning_logs)
+
+    # Verify the result has the placeholder wstg_id (via original_severity check - the finding made it through)
+    result = triage_doc["results"][0]
+    assert result["finding_id"] == finding_id
+    assert result["source"] == "baseline"
+
+
+@pytest.mark.asyncio
+async def test_run_llm_triage_handles_missing_wstg_id(mock_db, caplog):
+    """run_llm_triage() handles stale findings missing wstg_id by substituting "UNKNOWN" and logging warning.
+
+    Note: Without GROQ_API_KEY, the LLM triage falls back to baseline internally,
+    but our wstg_id handling happens BEFORE that fallback in jobs.py.
+    """
+    scan_id = uuid4()
+
+    # Create a scan document
+    scan_data = ScanCreate(
+        scan_id=scan_id,
+        url="https://example.com",
+        max_pages=10,
+        max_depth=1,
+        timeout=10.0,
+        allow_write_tests=False,
+        status=ScanStatus.COMPLETED,
+        progress=ScanProgress(),
+        target_url="https://example.com",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    await mock_db.scans.insert_one(scan_data.model_dump(mode="json"))
+
+    # Insert a finding WITHOUT wstg_id
+    finding_id = "finding-legacy-456"
+    finding_doc = {
+        "id": finding_id,
+        "scan_id": str(scan_id),
+        "check": "test_check",
+        "title": "Legacy Finding LLM",
+        "severity": SeverityLevel.MEDIUM.value,
+        "score": 50,
+        "impact": 3,
+        "likelihood": 3,
+        # wstg_id intentionally omitted
+        "attck_ids": ["T5678"],
+        "evidence": {
+            "url": "https://example.com/test",
+            "snippet": "test evidence",
+            "matched_pattern": "pattern",
+            "request_headers": {},
+            "response_headers": {},
+            "response_status": 200,
+        },
+        "confidence": 0.8,
+        "remediation": "Fix it",
+        "references": ["https://example.com/ref"],
+    }
+    await mock_db.findings.insert_one(finding_doc)
+
+    triage_data = TriageRunCreate(
+        scan_id=scan_id,
+        mode=TriageMode.LLM,
+    )
+    await mock_db.triage_runs.insert_one(triage_data.model_dump(mode="json"))
+
+    # Should not raise - wstg_id missing should be handled gracefully
+    await run_llm_triage(scan_id, triage_data)
+
+    # Verify triage completed (may fall back to baseline if no API key)
+    triage_doc = await mock_db.triage_runs.find_one({"triage_id": str(triage_data.triage_id)})
+    assert triage_doc is not None
+    assert triage_doc["status"] == "completed"
+    assert len(triage_doc["results"]) == 1
+
+    # Verify WARNING was logged about missing wstg_id (our fix in jobs.py)
+    warning_logs = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warning_logs) >= 1
+    assert any("missing wstg_id" in r.message and finding_id in r.message for r in warning_logs)
+
+    # Verify the finding made it through (regardless of fallback source)
+    result = triage_doc["results"][0]
+    assert result["finding_id"] == finding_id
+    assert result["source"] in ("llm", "baseline")  # fallback is expected without API key
