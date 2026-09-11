@@ -94,13 +94,13 @@ export function ReportView({ scanId }: ReportViewProps) {
             <div>
               <h4 className="font-medium mb-2 text-gray-400">Plain Text</h4>
               <pre className="p-4 font-mono text-sm text-gray-100 overflow-x-auto max-h-[500px] bg-gray-800 rounded">
-                {typeof report === "object" && "plain" in report ? report.plain : "N/A"}
+                {typeof report === "object" && report !== null && "plain" in report ? (report as Record<string, unknown>).plain as string : "N/A"}
               </pre>
             </div>
             <div>
               <h4 className="font-medium mb-2 text-gray-400">JSON</h4>
               <pre className="p-4 font-mono text-sm text-gray-100 overflow-x-auto max-h-[500px] bg-gray-800 rounded">
-                {typeof report === "object" && "json" in report ? JSON.stringify(report.json, null, 2) : "N/A"}
+                {typeof report === "object" && report !== null && "json" in report ? JSON.stringify((report as Record<string, unknown>).json, null, 2) : "N/A"}
               </pre>
             </div>
           </div>

@@ -19,6 +19,11 @@ test-target/
 test_debug.py
 pytest_output.txt
 
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/package-lock.json
+
 # Generated evaluation/test artifacts
 *_results.json
 report.json

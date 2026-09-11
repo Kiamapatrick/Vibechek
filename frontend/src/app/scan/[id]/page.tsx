@@ -5,7 +5,7 @@ import { useScan, useFindings, useFindingsStats } from "@/hooks/useApi";
 import { TriageView } from "@/components/TriageView";
 import { ReportView } from "@/components/ReportView";
 import { ProgressLog } from "@/components/ProgressLog";
-import { ScanResponse, ScanStatus, FindingResponse } from "@/types/api";
+import { ScanResponse, ScanStatus, FindingResponse, SeverityLevel } from "@/types/api";
 import { cn, formatRelativeTime, getSeverityColor } from "@/lib/utils";
 import { Shield, ArrowLeft, Loader2, AlertCircle, CheckCircle, XCircle, Clock, Terminal, Globe, AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -138,7 +138,7 @@ export default function ScanDetailPage() {
                     key={severity}
                     className={cn("p-4 rounded-lg text-center", getSeverityColor(severity).replace("text-", "bg-").replace("dark:bg-", "dark:bg-").replace("dark:text-", "dark:bg-").replace("800", "100").replace("400", "900/30"))}
                   >
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats[severity as keyof typeof stats] || 0}</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.by_severity[severity as SeverityLevel] || 0}</div>
                     <div className="text-xs font-medium">{severity}</div>
                   </div>
                 ))}
@@ -152,7 +152,7 @@ export default function ScanDetailPage() {
                   {findings && findings.length > 0 ? (
                     <>
                       <h2 className="text-lg font-semibold mb-4">Findings ({findings.length})</h2>
-                      <FindingsTable findings={findings} stats={stats || {} as Record<string, number>} />
+                      <FindingsTable findings={findings} />
                     </>
                   ) : (
                     <div className="p-12 text-center">
@@ -190,7 +190,7 @@ export default function ScanDetailPage() {
 }
 
 // Local FindingsTable component for this page
-function FindingsTable({ findings, stats }: { findings: FindingResponse[]; stats: Record<string, number> }) {
+function FindingsTable({ findings }: { findings: FindingResponse[] }) {
   return (
     <div className="overflow-x-auto rounded-lg border">
       <table className="w-full">

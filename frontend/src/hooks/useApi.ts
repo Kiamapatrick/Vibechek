@@ -39,7 +39,6 @@ export function useStartScan() {
     mutationFn: (data: ScanRequest) => api.startScan(data),
     onSuccess: (newScan) => {
       queryClient.invalidateQueries({ queryKey: ["scans"] });
-      return newScan;
     },
   });
 }

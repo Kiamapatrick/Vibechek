@@ -128,8 +128,9 @@ export function TriageView({ scanId }: TriageViewProps) {
     );
   }
 
-  // Compare tab
-  if (!compareData) return <div>Loading comparison...</div>;
+  if (!compareData) {
+    return <div className="text-center text-gray-500">Loading comparison...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -165,7 +166,7 @@ export function TriageView({ scanId }: TriageViewProps) {
             </table>
           </div>
         </div>
-      }
+      )}
     </div>
   );
 }

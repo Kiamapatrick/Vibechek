@@ -1,9 +1,9 @@
 "use client";
 
-import { useScans, useStartScan } from "@/hooks/useApi";
+import { useScans } from "@/hooks/useApi";
 import { ScanWizard } from "@/components/ScanWizard";
 import { ScanStatus, ScanResponse } from "@/types/api";
-import { cn, formatRelativeTime, getSeverityColor } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { Shield, Clock, CheckCircle, XCircle, Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -25,16 +25,6 @@ const STATUS_ICONS: Record<ScanStatus, React.ComponentType<{ className?: string 
 export default function Dashboard() {
   const [selectedScan, setSelectedScan] = useState<ScanResponse | null>(null);
   const { data: scans, isLoading, refetch } = useScans();
-  const startScan = useStartScan();
-
-  const handleStartScan = async (data: Parameters<typeof startScan.mutate>[0]) => {
-    startScan.mutate(data, {
-      onSuccess: (newScan) => {
-        setSelectedScan(newScan);
-        refetch();
-      },
-    });
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -64,7 +54,7 @@ export default function Dashboard() {
           <div className="lg:col-span-1">
             <div className="sticky top-24 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
               <h2 className="text-lg font-semibold mb-4">New Scan</h2>
-              <ScanWizard onScanStart={handleStartScan} />
+              <ScanWizard />
             </div>
           </div>
 

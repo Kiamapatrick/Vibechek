@@ -12,6 +12,14 @@ interface FindingsTableProps {
   onSort?: (key: keyof FindingResponse, direction: "asc" | "desc") => void;
 }
 
+const SORTABLE_COLUMNS = [
+  { key: "severity", label: "Severity" },
+  { key: "check", label: "Check" },
+  { key: "title", label: "Title" },
+  { key: "score", label: "Score" },
+  { key: "confidence", label: "Confidence" },
+] as const;
+
 export function FindingsTable({ findings, stats }: FindingsTableProps) {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityLevel | "all">("all");
@@ -22,7 +30,7 @@ export function FindingsTable({ findings, stats }: FindingsTableProps) {
   });
 
   const severities: SeverityLevel[] = ["Critical", "High", "Medium", "Low", "Info"];
-  const checks = useMemo(() => [...new Set(findings.map((f) => f.check))], [findings]);
+  const checks = useMemo(() => Array.from(new Set(findings.map((f) => f.check))), [findings]);
 
   const filteredFindings = useMemo(() => {
     let result = findings;
@@ -49,6 +57,7 @@ export function FindingsTable({ findings, stats }: FindingsTableProps) {
       result = [...result].sort((a, b) => {
         const aVal = a[sortConfig.key];
         const bVal = b[sortConfig.key];
+        if (aVal === undefined || bVal === undefined) return 0;
         if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
@@ -137,13 +146,7 @@ export function FindingsTable({ findings, stats }: FindingsTableProps) {
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-800/50">
             <tr>
-              {[
-                { key: "severity", label: "Severity" },
-                { key: "check", label: "Check" },
-                { key: "title", label: "Title" },
-                { key: "score", label: "Score" },
-                { key: "confidence", label: "Confidence" },
-              ].map(({ key, label }) => (
+              {SORTABLE_COLUMNS.map(({ key, label }) => (
                 <th
                   key={key}
                   onClick={() => handleSort(key)}

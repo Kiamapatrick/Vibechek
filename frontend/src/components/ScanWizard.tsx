@@ -17,23 +17,28 @@ export function ScanWizard() {
 
   const { mutate: startScan, isPending } = useStartScan();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    try {
-      const newScan = await startScan({
+    startScan(
+      {
         url,
         max_pages: maxPages,
         max_depth: maxDepth,
         timeout,
         allow_write_tests: allowWriteTests,
-      });
-      router.push(`/scan/${newScan.scan_id}`);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to start scan";
-      setError(message);
-    }
+      },
+      {
+        onSuccess: (newScan) => {
+          router.push(`/scan/${newScan.scan_id}`);
+        },
+        onError: (err: unknown) => {
+          const message = err instanceof Error ? err.message : "Failed to start scan";
+          setError(message);
+        },
+      }
+    );
   };
 
   return (
