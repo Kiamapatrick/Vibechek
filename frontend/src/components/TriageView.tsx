@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTriageRuns, useStartTriage, useTriage, useCompareTriage } from "@/hooks/useApi";
 import { UUID, TriageRunResponse, TriageResult, TriageCompareResponse, TriageMode } from "@/types/api";
 import { cn, getSeverityColor, getSourceColor, getPriorityLabel, formatDate, formatRelativeTime } from "@/lib/utils";
-import { Brain, Zap, RefreshCw, ChevronDown, ChevronUp, FileText, Github, ExternalLink } from "lucide-react";
+import { Brain, Zap, RefreshCw, ChevronDown, ChevronUp, FileText, ExternalLink } from "lucide-react";
 
 interface TriageViewProps {
   scanId: UUID;
