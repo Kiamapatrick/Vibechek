@@ -70,6 +70,13 @@ export function ProgressLog({ scanId, isActive }: ProgressLogProps) {
       setConnected(false);
     });
 
+    eventSource.addEventListener("timeout", (event) => {
+      const data = JSON.parse(event.data);
+      setLogs((prev) => [...prev, { timestamp: new Date().toISOString(), level: "error", message: data.message, stage: "scan" }]);
+      eventSource.close();
+      setConnected(false);
+    });
+
     eventSource.onerror = () => {
       setConnected(false);
       eventSource.close();
