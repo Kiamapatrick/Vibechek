@@ -11,7 +11,7 @@ export function ScanWizard() {
   const [url, setUrl] = useState("");
   const [maxPages, setMaxPages] = useState(20);
   const [maxDepth, setMaxDepth] = useState(2);
-  const [timeout, setTimeout] = useState(10);
+  const [timeoutSeconds, setTimeoutSeconds] = useState(10);
   const [allowWriteTests, setAllowWriteTests] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,7 +26,7 @@ export function ScanWizard() {
         url,
         max_pages: maxPages,
         max_depth: maxDepth,
-        timeout,
+        timeout: timeoutSeconds,
         allow_write_tests: allowWriteTests,
       },
       {
@@ -115,8 +115,8 @@ export function ScanWizard() {
           <input
             id="timeout"
             type="number"
-            value={timeout}
-            onChange={(e) => setTimeout(Math.max(1, Math.min(300, parseInt(e.target.value) || 1)))}
+            value={timeoutSeconds}
+            onChange={(e) => setTimeoutSeconds(Math.max(1, Math.min(300, parseInt(e.target.value) || 1)))}
             min="1"
             max="300"
             className={cn(

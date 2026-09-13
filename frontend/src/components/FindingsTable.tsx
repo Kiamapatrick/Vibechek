@@ -20,6 +20,14 @@ const SORTABLE_COLUMNS = [
   { key: "confidence", label: "Confidence" },
 ] as const;
 
+const SEVERITY_RANK: Record<SeverityLevel, number> = {
+  Critical: 5,
+  High: 4,
+  Medium: 3,
+  Low: 2,
+  Info: 1,
+};
+
 export function FindingsTable({ findings, stats }: FindingsTableProps) {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityLevel | "all">("all");
@@ -55,6 +63,11 @@ export function FindingsTable({ findings, stats }: FindingsTableProps) {
 
     if (sortConfig) {
       result = [...result].sort((a, b) => {
+        if (sortConfig.key === "severity") {
+          const aRank = SEVERITY_RANK[a.severity];
+          const bRank = SEVERITY_RANK[b.severity];
+          return sortConfig.direction === "asc" ? aRank - bRank : bRank - aRank;
+        }
         const aVal = a[sortConfig.key];
         const bVal = b[sortConfig.key];
         if (aVal === undefined || bVal === undefined) return 0;
