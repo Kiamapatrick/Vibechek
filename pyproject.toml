@@ -25,6 +25,7 @@ dependencies = [
     "packaging>=23.2",
     "groq>=0.11",
     "pydantic-settings>=2.5",
+    "rank_bm25>=0.2",
 ]
 [project.optional-dependencies]
 dev = [
@@ -35,7 +36,6 @@ dev = [
     "mypy>=1.10",
     "types-requests>=2.31",
     "respx>=0.21",
-    "rank_bm25>=0.2",
     "scipy>=1.10",
     "mongomock-motor>=0.0.36",
 ]
