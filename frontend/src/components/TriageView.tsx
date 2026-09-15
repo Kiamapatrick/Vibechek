@@ -10,14 +10,6 @@ interface TriageViewProps {
   scanId: UUID;
 }
 
-const SEVERITY_ORDER: Record<string, number> = {
-  Critical: 5,
-  High: 4,
-  Medium: 3,
-  Low: 2,
-  Info: 1,
-};
-
 export function TriageView({ scanId }: TriageViewProps) {
   const [activeTab, setActiveTab] = useState<"runs" | "compare">("runs");
   const [expandedFinding, setExpandedFinding] = useState<string | null>(null);
@@ -37,8 +29,28 @@ export function TriageView({ scanId }: TriageViewProps) {
   const baselineRun = getLatestRun("baseline");
   const llmRun = getLatestRun("llm");
 
-  if (activeTab === "runs") {
-    return (
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-2 border rounded-lg p-1 bg-gray-100 dark:bg-gray-800 w-fit">
+        <button
+          onClick={() => setActiveTab("runs")}
+          className={cn("px-4 py-2 rounded-md text-sm font-medium transition-colors",
+            activeTab === "runs" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-600 dark:text-gray-400"
+          )}
+        >
+          Runs
+        </button>
+        <button
+          onClick={() => setActiveTab("compare")}
+          className={cn("px-4 py-2 rounded-md text-sm font-medium transition-colors",
+            activeTab === "compare" ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-600 dark:text-gray-400"
+          )}
+        >
+          Compare
+        </button>
+      </div>
+
+      {activeTab === "runs" ? (
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-xl font-semibold">Triage Runs</h2>
@@ -125,47 +137,48 @@ export function TriageView({ scanId }: TriageViewProps) {
 
         {runsLoading && <div className="text-center text-gray-500">Loading triage runs...</div>}
       </div>
-    );
-  }
+      ) : (
+        <>
+          {!compareData ? (
+            <div className="text-center text-gray-500">Loading comparison...</div>
+          ) : (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold">Baseline vs LLM Comparison</h2>
 
-  if (!compareData) {
-    return <div className="text-center text-gray-500">Loading comparison...</div>;
-  }
+              <div className="grid gap-4 md:grid-cols-3">
+                <StatCard label="Baseline Only" value={compareData.baseline_only.length} color="green" icon={Zap} />
+                <StatCard label="LLM Only" value={compareData.llm_only.length} color="purple" icon={Brain} />
+                <StatCard label="Changed Priority" value={compareData.changed_priority.length} color="orange" icon={RefreshCw} />
+              </div>
 
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Baseline vs LLM Comparison</h2>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Baseline Only" value={compareData.baseline_only.length} color="green" icon={Zap} />
-        <StatCard label="LLM Only" value={compareData.llm_only.length} color="purple" icon={Brain} />
-        <StatCard label="Changed Priority" value={compareData.changed_priority.length} color="orange" icon={RefreshCw} />
-      </div>
-
-      {compareData.changed_priority.length > 0 && (
-        <div className="bg-card border rounded-lg p-4">
-          <h3 className="font-semibold mb-4">Priority Changes</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b">
-                  <th className="pb-2">Finding</th>
-                  <th className="pb-2">Baseline</th>
-                  <th className="pb-2">LLM</th>
-                </tr>
-              </thead>
-              <tbody>
-                {compareData.changed_priority.map((change) => (
-                  <tr key={change.finding_id} className="border-b">
-                    <td className="py-2 font-mono">{change.finding_id}</td>
-                    <td className="py-2">{getPriorityLabel(change.baseline_priority)}</td>
-                    <td className="py-2">{getPriorityLabel(change.llm_priority)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              {compareData.changed_priority.length > 0 && (
+                <div className="bg-card border rounded-lg p-4">
+                  <h3 className="font-semibold mb-4">Priority Changes</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-gray-500 border-b">
+                          <th className="pb-2">Finding</th>
+                          <th className="pb-2">Baseline</th>
+                          <th className="pb-2">LLM</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {compareData.changed_priority.map((change) => (
+                          <tr key={change.finding_id} className="border-b">
+                            <td className="py-2 font-mono">{change.finding_id}</td>
+                            <td className="py-2">{getPriorityLabel(change.baseline_priority)}</td>
+                            <td className="py-2">{getPriorityLabel(change.llm_priority)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
