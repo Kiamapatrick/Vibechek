@@ -16,17 +16,31 @@ export function ReportView({ scanId }: ReportViewProps) {
 
   const { data: report, isLoading, error } = useReport(scanId, format);
 
+  const getReportText = (): string | null => {
+    if (typeof report === "string") return report;
+    if (format === "json" && typeof report === "object" && report !== null) {
+      return JSON.stringify(report, null, 2);
+    }
+    if (format === "both" && typeof report === "object" && report !== null && "plain" in report && "json" in report) {
+      const r = report as Record<string, unknown>;
+      return `${r.plain}\n\n---\n\n${JSON.stringify(r.json, null, 2)}`;
+    }
+    return null;
+  };
+
   const handleCopy = async () => {
-    if (typeof report === "string") {
-      await navigator.clipboard.writeText(report);
+    const text = getReportText();
+    if (text) {
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
   const handleDownload = () => {
-    if (typeof report === "string") {
-      const blob = new Blob([report], { type: format === "json" ? "application/json" : "text/plain" });
+    const text = getReportText();
+    if (text) {
+      const blob = new Blob([text], { type: format === "json" ? "application/json" : "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
