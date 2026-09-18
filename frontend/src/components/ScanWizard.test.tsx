@@ -1,5 +1,6 @@
 import { renderWithProviders, screen, waitFor } from '@/test/utils';
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/react';
 import { ScanWizard } from '@/components/ScanWizard';
 import { api } from '@/lib/api';
 
@@ -24,11 +25,6 @@ describe('ScanWizard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
   });
 
   it('renders all form fields', () => {
@@ -75,16 +71,15 @@ describe('ScanWizard', () => {
     const maxPagesInput = screen.getByLabelText('Max Pages');
 
     await user.clear(maxPagesInput);
-    await user.type(maxPagesInput, '0');
-    expect(maxPagesInput).toHaveValue('1');
+    fireEvent.change(maxPagesInput, { target: { value: '0' } });
+    await waitFor(() => expect(maxPagesInput).toHaveValue(1));
 
     await user.clear(maxPagesInput);
-    await user.type(maxPagesInput, '1001');
-    expect(maxPagesInput).toHaveValue('1000');
+    fireEvent.change(maxPagesInput, { target: { value: '1001' } });
+    await waitFor(() => expect(maxPagesInput).toHaveValue(1000));
 
-    await user.clear(maxPagesInput);
-    await user.type(maxPagesInput, '500');
-    expect(maxPagesInput).toHaveValue('500');
+    fireEvent.change(maxPagesInput, { target: { value: '500' } });
+    await waitFor(() => expect(maxPagesInput).toHaveValue(500));
   });
 
   it('clamps maxDepth to 0-10 range', async () => {
@@ -93,12 +88,12 @@ describe('ScanWizard', () => {
     const maxDepthInput = screen.getByLabelText('Max Depth');
 
     await user.clear(maxDepthInput);
-    await user.type(maxDepthInput, '-1');
-    expect(maxDepthInput).toHaveValue('0');
+    fireEvent.change(maxDepthInput, { target: { value: '-1' } });
+    await waitFor(() => expect(maxDepthInput).toHaveValue(0));
 
     await user.clear(maxDepthInput);
-    await user.type(maxDepthInput, '11');
-    expect(maxDepthInput).toHaveValue('10');
+    fireEvent.change(maxDepthInput, { target: { value: '11' } });
+    await waitFor(() => expect(maxDepthInput).toHaveValue(10));
   });
 
   it('clamps timeout to 1-300 range', async () => {
@@ -107,12 +102,12 @@ describe('ScanWizard', () => {
     const timeoutInput = screen.getByLabelText('Timeout (seconds)');
 
     await user.clear(timeoutInput);
-    await user.type(timeoutInput, '0');
-    expect(timeoutInput).toHaveValue('1');
+    fireEvent.change(timeoutInput, { target: { value: '0' } });
+    await waitFor(() => expect(timeoutInput).toHaveValue(1));
 
     await user.clear(timeoutInput);
-    await user.type(timeoutInput, '301');
-    expect(timeoutInput).toHaveValue('300');
+    fireEvent.change(timeoutInput, { target: { value: '301' } });
+    await waitFor(() => expect(timeoutInput).toHaveValue(300));
   });
 
   it('shows warning when allow_write_tests is enabled', async () => {
@@ -162,7 +157,7 @@ describe('ScanWizard', () => {
     renderWithProviders(<ScanWizard />);
 
     const urlInput = screen.getByLabelText('Target URL');
-    await user.type(urlInput, 'invalid-url');
+    await user.type(urlInput, 'https://invalid.com');
 
     const submitButton = screen.getByRole('button', { name: /start scan/i });
     await user.click(submitButton);
@@ -186,8 +181,10 @@ describe('ScanWizard', () => {
     const submitButton = screen.getByRole('button', { name: /start scan/i });
     await user.click(submitButton);
 
-    expect(screen.getByText('Starting scan...')).toBeInTheDocument();
-    expect(submitButton).toBeDisabled();
+    await waitFor(() => {
+      expect(screen.getByText('Starting scan...')).toBeInTheDocument();
+      expect(submitButton).toBeDisabled();
+    });
 
     resolveSubmit!({ scan_id: 'scan-123' });
     await waitFor(() => expect(screen.queryByText('Starting scan...')).not.toBeInTheDocument());
