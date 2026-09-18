@@ -126,8 +126,8 @@ export function ProgressLog({ scanId, isActive }: ProgressLogProps) {
           return (
             <div key={index} className="flex items-start gap-2 text-gray-300 hover:text-gray-100 transition-colors">
               <span className="text-gray-500 shrink-0">{formatRelativeTime(log.timestamp)}</span>
-              <LevelIcon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", LEVEL_COLORS[log.level])} />
-              {StageIcon && <StageIcon className="h-3.5 w-3.5 shrink-0 mt-0.5 text-gray-500" />}
+              <LevelIcon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", LEVEL_COLORS[log.level])} aria-hidden="true" />
+              {StageIcon && <StageIcon className="h-3.5 w-3.5 shrink-0 mt-0.5 text-gray-500" aria-hidden="true" />}
               <span className="flex-1 truncate">{log.message}</span>
             </div>
           );

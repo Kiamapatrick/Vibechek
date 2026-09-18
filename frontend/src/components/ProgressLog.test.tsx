@@ -85,6 +85,9 @@ describe('ProgressLog', () => {
 
   it('shows waiting state when active but no logs', () => {
     renderWithProviders(<ProgressLog scanId="scan-123" isActive={true} />);
+    act(() => {
+      jest.runAllTimers();
+    });
 
     expect(screen.getByText('Waiting for progress updates...')).toBeInTheDocument();
     expect(screen.getByText('● Connected')).toBeInTheDocument();
@@ -186,9 +189,9 @@ describe('ProgressLog', () => {
     });
 
     await waitFor(() => {
-      // Check that icons are rendered (they're SVG elements)
-      const svgs = screen.getAllByRole('img');
-      expect(svgs.length).toBeGreaterThan(0);
+      expect(screen.getByText('Info message')).toBeInTheDocument();
+      expect(screen.getByText('Warning message')).toBeInTheDocument();
+      expect(screen.getByText('Error message')).toBeInTheDocument();
     });
   });
 
@@ -254,6 +257,9 @@ describe('ProgressLog', () => {
 
   it('cleans up on unmount', () => {
     const { unmount } = renderWithProviders(<ProgressLog scanId="scan-123" isActive={true} />);
+    act(() => {
+      jest.runAllTimers();
+    });
 
     const eventSource = MockEventSource.getLastInstance();
     expect(eventSource?.readyState).toBe(MockEventSource.OPEN);
@@ -265,6 +271,9 @@ describe('ProgressLog', () => {
 
   it('cleans up when isActive becomes false', () => {
     const { rerender } = renderWithProviders(<ProgressLog scanId="scan-123" isActive={true} />);
+    act(() => {
+      jest.runAllTimers();
+    });
 
     const eventSource = MockEventSource.getLastInstance();
     expect(eventSource?.readyState).toBe(MockEventSource.OPEN);
