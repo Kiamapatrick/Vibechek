@@ -28,7 +28,7 @@ const SEVERITY_RANK: Record<SeverityLevel, number> = {
   Info: 1,
 };
 
-export function FindingsTable({ findings, stats }: FindingsTableProps) {
+export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityLevel | "all">("all");
   const [checkFilter, setCheckFilter] = useState<string>("all");
@@ -81,10 +81,10 @@ export function FindingsTable({ findings, stats }: FindingsTableProps) {
   }, [findings, search, severityFilter, checkFilter, sortConfig]);
 
   const handleSort = (key: keyof FindingResponse) => {
-    setSortConfig((current) => ({
-      key,
-      direction: current?.key === key && current.direction === "asc" ? "desc" : "asc",
-    }));
+    const direction: "asc" | "desc" =
+      sortConfig?.key === key && sortConfig.direction === "asc" ? "desc" : "asc";
+    setSortConfig({ key, direction });
+    onSort?.(key, direction);
   };
 
   const SortIcon = ({ key }: { key: keyof FindingResponse }) => {
