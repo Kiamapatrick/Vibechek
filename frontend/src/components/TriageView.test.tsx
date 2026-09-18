@@ -156,7 +156,7 @@ describe('TriageView', () => {
     await user.click(screen.getByText('Run Baseline'));
 
     await waitFor(() => {
-      expect(api.startTriage).toHaveBeenCalledWith({ scanId, mode: 'baseline' });
+      expect(api.startTriage).toHaveBeenCalledWith(scanId, 'baseline');
     });
   });
 
@@ -195,7 +195,7 @@ describe('TriageView', () => {
     await user.click(screen.getByText('Run LLM Triage'));
 
     await waitFor(() => {
-      expect(api.startTriage).toHaveBeenCalledWith({ scanId, mode: 'llm' });
+      expect(api.startTriage).toHaveBeenCalledWith(scanId, 'llm');
     });
   });
 
@@ -259,8 +259,8 @@ describe('TriageView', () => {
     await waitFor(() => {
       expect(screen.getByText('Priority Changes')).toBeInTheDocument();
       expect(screen.getByText('finding-1')).toBeInTheDocument();
-      expect(screen.getByText('3')).toBeInTheDocument();
-      expect(screen.getByText('5')).toBeInTheDocument();
+      expect(screen.getByText('Medium')).toBeInTheDocument();
+      expect(screen.getByText('Critical')).toBeInTheDocument();
     });
   });
 

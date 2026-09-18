@@ -61,55 +61,72 @@ const mockReportBoth = {
   json: mockReportJson,
 };
 
+const originalCreateElement = document.createElement.bind(document);
+
+const setupReportMocks = (plain = mockReportPlain, json = mockReportJson, both = mockReportBoth) => {
+  (api.getReport as jest.Mock).mockImplementation((_scanId: string, format: string) => {
+    if (format === 'plain') return Promise.resolve(plain);
+    if (format === 'json') return Promise.resolve(json);
+    if (format === 'both') return Promise.resolve(both);
+    return Promise.resolve(plain);
+  });
+};
+
 describe('ReportView', () => {
   const user = userEvent.setup();
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (api.getReport as jest.Mock).mockResolvedValue(mockReportPlain);
+    setupReportMocks();
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: jest.fn() },
+      configurable: true,
+    });
   });
 
-  it('renders format tabs', () => {
+  it('renders format tabs', async () => {
     renderWithProviders(<ReportView scanId={scanId} />);
 
-    expect(screen.getByText('Plain')).toBeInTheDocument();
-    expect(screen.getByText('Json')).toBeInTheDocument();
-    expect(screen.getByText('Both')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Plain')).toBeInTheDocument();
+      expect(screen.getByText('Json')).toBeInTheDocument();
+      expect(screen.getByText('Both')).toBeInTheDocument();
+    });
   });
 
   it('loads plain format by default', async () => {
     renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('VibeShield Security Scan Report')).toBeInTheDocument();
-      expect(screen.getByText('Reflected XSS in search parameter')).toBeInTheDocument();
+      expect(screen.getByText(/VibeShield Security Scan Report/)).toBeInTheDocument();
+      expect(screen.getByText(/Reflected XSS in search parameter/)).toBeInTheDocument();
     });
   });
 
   it('switches to JSON format', async () => {
-    (api.getReport as jest.Mock).mockResolvedValue(mockReportJson);
+    setupReportMocks(mockReportPlain, mockReportJson, mockReportBoth);
 
     renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('VibeShield Security Scan Report')).toBeInTheDocument();
+      expect(screen.getByText(/VibeShield Security Scan Report/)).toBeInTheDocument();
     });
 
     await user.click(screen.getByText('Json'));
 
     await waitFor(() => {
-      expect(screen.getByText('"scan_id"')).toBeInTheDocument();
-      expect(screen.getByText('"target_url"')).toBeInTheDocument();
+      expect(screen.getByText(/scan_id/)).toBeInTheDocument();
+      expect(screen.getByText(/target_url/)).toBeInTheDocument();
     });
   });
 
   it('switches to Both format', async () => {
-    (api.getReport as jest.Mock).mockResolvedValue(mockReportBoth);
+    setupReportMocks(mockReportPlain, mockReportJson, mockReportBoth);
 
     renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('VibeShield Security Scan Report')).toBeInTheDocument();
+      expect(screen.getByText(/VibeShield Security Scan Report/)).toBeInTheDocument();
     });
 
     await user.click(screen.getByText('Both'));
@@ -121,32 +138,34 @@ describe('ReportView', () => {
   });
 
   it('copies plain format to clipboard', async () => {
-    renderWithProviders(<ReportView scanId={scanId} />);
+    const { container } = renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('VibeShield Security Scan Report')).toBeInTheDocument();
+      expect(screen.getByText(/VibeShield Security Scan Report/)).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText('Copy'));
+    await user.click(screen.getByRole('button', { name: /copy/i }));
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockReportPlain);
-      expect(screen.getByText('Copied')).toBeInTheDocument();
+      const checkIcon = container.querySelector('.lucide-check');
+      expect(checkIcon).toBeInTheDocument();
     });
   });
 
   it('copies JSON format to clipboard', async () => {
-    (api.getReport as jest.Mock).mockResolvedValue(mockReportJson);
+    setupReportMocks(mockReportPlain, mockReportJson, mockReportBoth);
 
     renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('VibeShield Security Scan Report')).toBeInTheDocument();
+      expect(screen.getByText(/VibeShield Security Scan Report/)).toBeInTheDocument();
     });
 
     await user.click(screen.getByText('Json'));
+
     await waitFor(() => {
-      expect(screen.getByText('"scan_id"')).toBeInTheDocument();
+      expect(screen.getByText(/scan_id/)).toBeInTheDocument();
     });
 
     await user.click(screen.getByText('Copy'));
@@ -157,17 +176,19 @@ describe('ReportView', () => {
   });
 
   it('copies Both format to clipboard', async () => {
-    (api.getReport as jest.Mock).mockResolvedValue(mockReportBoth);
+    setupReportMocks(mockReportPlain, mockReportJson, mockReportBoth);
 
     renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('VibeShield Security Scan Report')).toBeInTheDocument();
+      expect(screen.getByText(/VibeShield Security Scan Report/)).toBeInTheDocument();
     });
 
     await user.click(screen.getByText('Both'));
+
     await waitFor(() => {
       expect(screen.getByText('Plain Text')).toBeInTheDocument();
+      expect(screen.getByText('JSON')).toBeInTheDocument();
     });
 
     await user.click(screen.getByText('Copy'));
@@ -177,26 +198,24 @@ describe('ReportView', () => {
         expect.stringContaining('VibeShield Security Scan Report')
       );
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        expect.stringContaining('"scan_id"')
+        expect.stringContaining('scan_id')
       );
     });
   });
 
   it('downloads plain format as .txt', async () => {
-    const createObjectURL = jest.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
-    const revokeObjectURL = jest.spyOn(URL, 'revokeObjectURL');
     const clickMock = jest.fn();
     const createElementMock = jest.spyOn(document, 'createElement').mockImplementation((tag) => {
       if (tag === 'a') {
         return { href: '', download: '', click: clickMock } as unknown as HTMLAnchorElement;
       }
-      return document.createElement(tag);
+      return originalCreateElement(tag);
     });
 
     renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('VibeShield Security Scan Report')).toBeInTheDocument();
+      expect(screen.getByText(/VibeShield Security Scan Report/)).toBeInTheDocument();
     });
 
     await user.click(screen.getByText('Download'));
@@ -204,36 +223,34 @@ describe('ReportView', () => {
     await waitFor(() => {
       expect(createElementMock).toHaveBeenCalledWith('a');
       expect(clickMock).toHaveBeenCalled();
-      expect(createObjectURL).toHaveBeenCalled();
-      expect(revokeObjectURL).toHaveBeenCalled();
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(global.URL.revokeObjectURL).toHaveBeenCalled();
     });
 
-    createObjectURL.mockRestore();
-    revokeObjectURL.mockRestore();
     createElementMock.mockRestore();
   });
 
   it('downloads JSON format as .json', async () => {
-    (api.getReport as jest.Mock).mockResolvedValue(mockReportJson);
+    setupReportMocks(mockReportPlain, mockReportJson, mockReportBoth);
 
-    const createObjectURL = jest.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
     const clickMock = jest.fn();
     const createElementMock = jest.spyOn(document, 'createElement').mockImplementation((tag) => {
       if (tag === 'a') {
         return { href: '', download: '', click: clickMock } as unknown as HTMLAnchorElement;
       }
-      return document.createElement(tag);
+      return originalCreateElement(tag);
     });
 
     renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('VibeShield Security Scan Report')).toBeInTheDocument();
+      expect(screen.getByText(/VibeShield Security Scan Report/)).toBeInTheDocument();
     });
 
     await user.click(screen.getByText('Json'));
+
     await waitFor(() => {
-      expect(screen.getByText('"scan_id"')).toBeInTheDocument();
+      expect(screen.getByText(/scan_id/)).toBeInTheDocument();
     });
 
     await user.click(screen.getByText('Download'));
@@ -242,7 +259,6 @@ describe('ReportView', () => {
       expect(clickMock).toHaveBeenCalled();
     });
 
-    createObjectURL.mockRestore();
     createElementMock.mockRestore();
   });
 
@@ -262,20 +278,26 @@ describe('ReportView', () => {
   });
 
   it('shows error state', async () => {
-    (api.getReport as jest.Mock).mockRejectedValue(new Error('Failed'));
+    (api.getReport as jest.Mock).mockImplementation(() => 
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Failed')), 0))
+    );
 
     renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load report')).toBeInTheDocument();
+      expect(screen.getByText('Loading report...')).toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load report')).toBeInTheDocument();
+    }, { timeout: 5000 });
   });
 
   it('highlights active format tab', async () => {
     renderWithProviders(<ReportView scanId={scanId} />);
 
     await waitFor(() => {
-      expect(screen.getByText('VibeShield Security Scan Report')).toBeInTheDocument();
+      expect(screen.getByText(/VibeShield Security Scan Report/)).toBeInTheDocument();
     });
 
     const plainTab = screen.getByText('Plain');

@@ -88,3 +88,12 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 HTMLCanvasElement.prototype.getContext = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useParams: () => ({ id: "test-scan-id" }),
+  usePathname: () => "/",
+}));
+
+global.URL.createObjectURL = jest.fn(() => 'mock-blob-url');
+global.URL.revokeObjectURL = jest.fn();

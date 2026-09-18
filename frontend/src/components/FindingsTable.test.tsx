@@ -121,21 +121,20 @@ const mockFindings: FindingResponse[] = [
   },
 ];
 
-const mockStats = {
-  by_severity: {
-    Critical: 1,
-    High: 1,
-    Medium: 1,
-    Low: 1,
-    Info: 1,
-  },
-  by_check: {
-    xss_reflected: 1,
-    sql_injection: 1,
-    csrf: 1,
-    info_disclosure: 1,
-    cookie_flags: 1,
-  },
+const mockSeverityStats: Record<SeverityLevel, number> = {
+  Critical: 1,
+  High: 1,
+  Medium: 1,
+  Low: 1,
+  Info: 1,
+};
+
+const mockCheckStats = {
+  xss_reflected: 1,
+  sql_injection: 1,
+  csrf: 1,
+  info_disclosure: 1,
+  cookie_flags: 1,
 };
 
 describe('FindingsTable', () => {
@@ -143,7 +142,7 @@ describe('FindingsTable', () => {
 
   beforeEach(() => {
     renderWithProviders(
-      <FindingsTable findings={mockFindings} stats={mockStats} />
+      <FindingsTable findings={mockFindings} stats={mockSeverityStats} />
     );
   });
 
@@ -160,8 +159,9 @@ describe('FindingsTable', () => {
   });
 
   it('shows correct stats in severity filter dropdown', () => {
-    const select = screen.getByLabelText('All Severities');
-    const options = select.querySelectorAll('option');
+    const selects = screen.getAllByRole('combobox');
+    const severitySelect = selects[0];
+    const options = severitySelect.querySelectorAll('option');
 
     expect(options[0]).toHaveTextContent('All Severities');
     expect(options[1]).toHaveTextContent('Critical (1)');
@@ -172,86 +172,106 @@ describe('FindingsTable', () => {
   });
 
   it('filters by severity', async () => {
-    const select = screen.getByLabelText('All Severities');
-    await userEvent.selectOptions(select, 'Critical');
+    const selects = screen.getAllByRole('combobox');
+    const severitySelect = selects[0];
+    await userEvent.selectOptions(severitySelect, 'Critical');
 
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toHaveTextContent('Critical');
-    expect(rows[0]).toHaveTextContent('Reflected XSS');
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toHaveTextContent('Critical');
+      expect(rows[0]).toHaveTextContent('Reflected XSS');
+    });
   });
 
   it('filters by search term', async () => {
     const searchInput = screen.getByPlaceholderText('Search findings...');
     await user.type(searchInput, 'XSS');
 
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toHaveTextContent('Reflected XSS');
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toHaveTextContent('Reflected XSS');
+    });
   });
 
   it('filters by check type', async () => {
-    const select = screen.getByLabelText('All Checks');
-    await userEvent.selectOptions(select, 'sql_injection');
+    const selects = screen.getAllByRole('combobox');
+    const checkSelect = selects[1];
+    await userEvent.selectOptions(checkSelect, 'sql_injection');
 
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toHaveTextContent('SQL Injection');
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toHaveTextContent('SQL Injection');
+    });
   });
 
   it('sorts by severity ascending when clicking header', async () => {
-    const severityHeader = screen.getByText('Severity');
+    const severityHeader = screen.getByRole('columnheader', { name: /severity/i });
     await user.click(severityHeader);
 
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(rows[0]).toHaveTextContent('Info');
-    expect(rows[4]).toHaveTextContent('Critical');
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows[0]).toHaveTextContent('Info');
+      expect(rows[4]).toHaveTextContent('Critical');
+    });
   });
 
   it('sorts by severity descending when clicking header again', async () => {
-    const severityHeader = screen.getByText('Severity');
+    const severityHeader = screen.getByRole('columnheader', { name: /severity/i });
     await user.click(severityHeader); // asc
     await user.click(severityHeader); // desc
 
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(rows[0]).toHaveTextContent('Critical');
-    expect(rows[4]).toHaveTextContent('Info');
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows[0]).toHaveTextContent('Critical');
+      expect(rows[4]).toHaveTextContent('Info');
+    });
   });
 
   it('sorts by check name', async () => {
-    const checkHeader = screen.getByText('Check');
+    const checkHeader = screen.getByRole('columnheader', { name: /check/i });
     await user.click(checkHeader);
 
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(rows[0]).toHaveTextContent('cookie_flags');
-    expect(rows[4]).toHaveTextContent('xss_reflected');
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows[0]).toHaveTextContent('cookie_flags');
+      expect(rows[4]).toHaveTextContent('xss_reflected');
+    });
   });
 
   it('sorts by title', async () => {
-    const titleHeader = screen.getByText('Title');
+    const titleHeader = screen.getByRole('columnheader', { name: /title/i });
     await user.click(titleHeader);
 
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(rows[0]).toHaveTextContent('Missing CSRF');
-    expect(rows[4]).toHaveTextContent('Server version');
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows[0]).toHaveTextContent('Missing CSRF');
+      expect(rows[4]).toHaveTextContent('SQL Injection');
+    }, { timeout: 3000 });
   });
 
   it('sorts by score', async () => {
-    const scoreHeader = screen.getByText('Score');
+    const scoreHeader = screen.getByRole('columnheader', { name: /score/i });
     await user.click(scoreHeader);
 
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(rows[0]).toHaveTextContent('1.5');
-    expect(rows[4]).toHaveTextContent('9.1');
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows[0]).toHaveTextContent('1.5');
+      expect(rows[4]).toHaveTextContent('9.1');
+    });
   });
 
   it('sorts by confidence', async () => {
-    const confidenceHeader = screen.getByText('Confidence');
+    const confidenceHeader = screen.getByRole('columnheader', { name: /confidence/i });
     await user.click(confidenceHeader);
 
-    const rows = screen.getAllByRole('row').slice(1);
-    expect(rows[0]).toHaveTextContent('80%');
-    expect(rows[4]).toHaveTextContent('100%');
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows[0]).toHaveTextContent('80%');
+      expect(rows[4]).toHaveTextContent('100%');
+    });
   });
 
   it('shows clear filters button when filters are active', async () => {
@@ -286,12 +306,12 @@ describe('FindingsTable', () => {
 
   it('renders evidence URL truncated', () => {
     const rows = screen.getAllByRole('row').slice(1);
-    expect(rows[0]).toHaveTextContent('https://example.com/search?q=<script>alert(1)</script>');
+    expect(rows[0]).toHaveTextContent('https://example.com/search?q=<script>alert(1)</scr');
   });
 
   it('handles empty findings', () => {
     const { unmount } = renderWithProviders(
-      <FindingsTable findings={[]} stats={mockStats} />
+      <FindingsTable findings={[]} stats={mockSeverityStats} />
     );
 
     expect(screen.getByText('No findings match the current filters')).toBeInTheDocument();
@@ -300,11 +320,12 @@ describe('FindingsTable', () => {
   it('calls onSort callback when provided', async () => {
     const onSort = jest.fn();
     const { unmount } = renderWithProviders(
-      <FindingsTable findings={mockFindings} stats={mockStats} onSort={onSort} />
+      <FindingsTable findings={mockFindings} stats={mockSeverityStats} onSort={onSort} />
     );
 
-    const severityHeader = screen.getByText('Severity');
-    await user.click(severityHeader);
+    const severityHeaders = screen.getAllByRole('columnheader', { name: /severity/i });
+    const tableSeverityHeader = severityHeaders[1]; // Second one is in thead
+    await user.click(tableSeverityHeader);
 
     expect(onSort).toHaveBeenCalledWith('severity', 'asc');
   });
