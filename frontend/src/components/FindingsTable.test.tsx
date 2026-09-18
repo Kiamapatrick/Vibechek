@@ -248,7 +248,7 @@ describe('FindingsTable', () => {
     await waitFor(() => {
       const rows = screen.getAllByRole('row').slice(1);
       expect(rows[0]).toHaveTextContent('Missing CSRF');
-      expect(rows[4]).toHaveTextContent('SQL Injection');
+      expect(rows[4]).toHaveTextContent('Session cookie missing Secure and HttpOnly flags');
     }, { timeout: 3000 });
   });
 
