@@ -1,8 +1,9 @@
 import '@testing-library/jest-dom';
 import { TextEncoder, TextDecoder } from 'util';
+import { jest } from '@jest/globals';
 
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder;
+global.TextEncoder = TextEncoder as any;
+global.TextDecoder = TextDecoder as any;
 
 global.Request = global.Request || class Request {
   constructor(public input: RequestInfo | URL, public init?: RequestInit) {}
@@ -61,7 +62,7 @@ global.Headers = global.Headers || class Headers {
   [Symbol.iterator]() { return this.entries(); }
 } as unknown as typeof Headers;
 
-global.fetch = global.fetch || jest.fn().mockResolvedValue(new Response());
+global.fetch = global.fetch || (jest.fn() as any).mockResolvedValue(new (global.Response as any)());
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -87,7 +88,7 @@ Object.defineProperty(window, 'localStorage', {
   },
 });
 
-HTMLCanvasElement.prototype.getContext = jest.fn();
+HTMLCanvasElement.prototype.getContext = jest.fn() as any;
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),

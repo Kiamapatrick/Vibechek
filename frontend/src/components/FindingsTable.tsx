@@ -29,11 +29,11 @@ const SEVERITY_RANK: Record<SeverityLevel, number> = {
 };
 
 const SEVERITY_DISPLAY: Record<SeverityLevel, { label: string; icon: string }> = {
-  Critical: { label: "CRITICAL", icon: "🔴" },
-  High: { label: "HIGH", icon: "🟠" },
-  Medium: { label: "MEDIUM", icon: "🟡" },
-  Low: { label: "LOW", icon: "🔵" },
-  Info: { label: "INFO", icon: "⚪" },
+  Critical: { label: "Critical", icon: "🔴" },
+  High: { label: "High", icon: "🟠" },
+  Medium: { label: "Medium", icon: "🟡" },
+  Low: { label: "Low", icon: "🔵" },
+  Info: { label: "Info", icon: "⚪" },
 };
 
 export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
@@ -196,7 +196,7 @@ export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
                     <td className="px-4 py-3">
                       <div className={cn("inline-flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm", getSeverityColor(finding.severity))}>
                         <span className="text-lg">{severityInfo.icon}</span>
-                        <span className="uppercase tracking-wide">{severityInfo.label}</span>
+                        <span>{severityInfo.label}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{finding.check}</td>

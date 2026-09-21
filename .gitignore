@@ -22,6 +22,8 @@ pytest_output.txt
 # Frontend
 frontend/node_modules/
 frontend/.next/
+frontend/tsconfig.tsbuildinfo
+frontend/tsc-output.txt
 
 
 # Generated evaluation/test artifacts

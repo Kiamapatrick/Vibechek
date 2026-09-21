@@ -1,7 +1,8 @@
 import { TextEncoder, TextDecoder } from 'util';
+import { jest } from '@jest/globals';
 
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder;
+global.TextEncoder = TextEncoder as any;
+global.TextDecoder = TextDecoder as any;
 
 global.BroadcastChannel = global.BroadcastChannel || class BroadcastChannel {
   constructor(public name: string) {}
@@ -93,4 +94,4 @@ global.Headers = global.Headers || class Headers {
   [Symbol.iterator]() { return this.entries(); }
 } as unknown as typeof Headers;
 
-global.fetch = global.fetch || jest.fn().mockResolvedValue(new Response());
+global.fetch = global.fetch || (jest.fn() as any).mockResolvedValue(new (global.Response as any)());

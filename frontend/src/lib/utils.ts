@@ -29,7 +29,7 @@ export function formatRelativeTime(dateString: string): string {
 export function getSeverityColor(severity: string): string {
   switch (severity) {
     case "Critical":
-      return "bg-destructive/10 text-destructive dark:bg-destructive/20";
+      return "bg-destructive text-destructive-foreground";
     case "High":
       return "bg-destructive/10 text-destructive dark:bg-destructive/20";
     case "Medium":
