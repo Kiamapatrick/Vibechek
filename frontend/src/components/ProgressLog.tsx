@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { UUID } from "@/types/api";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import { Loader2, CheckCircle, AlertCircle, XCircle, Info, AlertTriangle, Terminal } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, XCircle, Info, AlertTriangle, Terminal, Wifi, WifiOff } from "lucide-react";
 
 interface ProgressLogProps {
   scanId: UUID;
@@ -26,9 +26,9 @@ const LEVEL_ICONS = {
 };
 
 const LEVEL_COLORS = {
-  info: "text-blue-600 dark:text-blue-400",
+  info: "text-primary",
   warning: "text-yellow-600 dark:text-yellow-400",
-  error: "text-red-600 dark:text-red-400",
+  error: "text-destructive",
 };
 
 function Globe({ className }: { className?: string }) {
@@ -95,7 +95,7 @@ export function ProgressLog({ scanId, isActive }: ProgressLogProps) {
 
   if (!isActive && logs.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+      <div className="h-64 flex items-center justify-center text-muted-foreground bg-muted/30 rounded-lg border border-border">
         <Terminal className="h-12 w-12 opacity-50" />
         <p className="ml-4">Start a scan to see live progress</p>
       </div>
@@ -103,12 +103,13 @@ export function ProgressLog({ scanId, isActive }: ProgressLogProps) {
   }
 
   return (
-    <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden h-64 flex flex-col">
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-700 bg-gray-800">
-        <Terminal className="h-4 w-4 text-green-400" />
-        <span className="font-mono text-sm text-gray-300">Live Progress</span>
-        <span className={cn("ml-2 px-2 py-0.5 text-xs rounded-full", connected ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400")}>
-          {connected ? "● Connected" : "○ Disconnected"}
+    <div className="bg-card border border-border rounded-lg overflow-hidden h-64 flex flex-col">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/50">
+        <Terminal className="h-4 w-4 text-primary" />
+        <span className="font-medium text-sm text-foreground">Live Progress</span>
+        <span className={cn("ml-2 px-2 py-0.5 text-xs rounded-full", connected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
+          {connected ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
+          {connected ? "Connected" : "Disconnected"}
         </span>
         {isActive && (
           <Loader2 className="ml-auto h-4 w-4 animate-spin text-primary" />
@@ -117,17 +118,17 @@ export function ProgressLog({ scanId, isActive }: ProgressLogProps) {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm">
         {logs.length === 0 && (
-          <div className="text-gray-500 text-center py-8">Waiting for progress updates...</div>
+          <div className="text-muted-foreground text-center py-8">Waiting for progress updates...</div>
         )}
         {logs.map((log, index) => {
           const LevelIcon = LEVEL_ICONS[log.level] || Info;
           const StageIcon = log.stage ? STAGE_ICONS[log.stage] || STAGE_ICONS.default : null;
 
           return (
-            <div key={index} className="flex items-start gap-2 text-gray-300 hover:text-gray-100 transition-colors">
-              <span className="text-gray-500 shrink-0">{formatRelativeTime(log.timestamp)}</span>
+            <div key={index} className="flex items-start gap-2 text-foreground/80 hover:text-foreground transition-colors">
+              <span className="text-muted-foreground shrink-0">{formatRelativeTime(log.timestamp)}</span>
               <LevelIcon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", LEVEL_COLORS[log.level])} aria-hidden="true" />
-              {StageIcon && <StageIcon className="h-3.5 w-3.5 shrink-0 mt-0.5 text-gray-500" aria-hidden="true" />}
+              {StageIcon && <StageIcon className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground" aria-hidden="true" />}
               <span className="flex-1 truncate">{log.message}</span>
             </div>
           );

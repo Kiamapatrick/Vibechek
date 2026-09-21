@@ -51,12 +51,12 @@ export function ReportView({ scanId }: ReportViewProps) {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Loading report...</div>;
+    return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading report...</div>;
   }
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
+      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
         Failed to load report
       </div>
     );
@@ -65,7 +65,7 @@ export function ReportView({ scanId }: ReportViewProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        <div className="flex gap-2 border rounded-lg p-1 bg-gray-100 dark:bg-gray-800">
+        <div className="flex gap-2 border border-border rounded-lg p-1 bg-muted/50">
           {(["plain", "json", "both"] as ReportFormat[]).map((f) => (
             <button
               key={f}
@@ -73,8 +73,8 @@ export function ReportView({ scanId }: ReportViewProps) {
               className={cn(
                 "px-4 py-2 rounded-md text-sm font-medium transition-colors",
                 format === f
-                  ? "bg-white dark:bg-gray-700 shadow-sm"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                  ? "bg-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -83,37 +83,37 @@ export function ReportView({ scanId }: ReportViewProps) {
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
-          <button onClick={handleCopy} className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-sm">
+          <button onClick={handleCopy} className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg hover:bg-muted/50 text-sm">
             <Copy className="h-4 w-4" />
-            {copied ? <Check className="h-4 w-4 text-green-500" /> : "Copy"}
+            {copied ? <Check className="h-4 w-4 text-success" /> : "Copy"}
           </button>
-          <button onClick={handleDownload} className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-sm">
+          <button onClick={handleDownload} className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg hover:bg-muted/50 text-sm">
             <Download className="h-4 w-4" />
             Download
           </button>
         </div>
       </div>
 
-      <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
         {format === "plain" && typeof report === "string" && (
-          <pre className="p-4 font-mono text-sm text-gray-100 overflow-x-auto max-h-[600px]">{report}</pre>
+          <pre className="p-4 font-mono text-sm text-foreground overflow-x-auto max-h-[600px]">{report}</pre>
         )}
         {format === "json" && typeof report === "object" && (
-          <pre className="p-4 font-mono text-sm text-gray-100 overflow-x-auto max-h-[600px]">
+          <pre className="p-4 font-mono text-sm text-foreground overflow-x-auto max-h-[600px]">
             {JSON.stringify(report, null, 2)}
           </pre>
         )}
         {format === "both" && (
           <div className="grid md:grid-cols-2 gap-4 p-4">
             <div>
-              <h4 className="font-medium mb-2 text-gray-400">Plain Text</h4>
-              <pre className="p-4 font-mono text-sm text-gray-100 overflow-x-auto max-h-[500px] bg-gray-800 rounded">
+              <h4 className="font-medium mb-2 text-muted-foreground">Plain Text</h4>
+              <pre className="p-4 font-mono text-sm text-foreground overflow-x-auto max-h-[500px] bg-muted/30 rounded">
                 {typeof report === "object" && report !== null && "plain" in report ? (report as Record<string, unknown>).plain as string : "N/A"}
               </pre>
             </div>
             <div>
-              <h4 className="font-medium mb-2 text-gray-400">JSON</h4>
-              <pre className="p-4 font-mono text-sm text-gray-100 overflow-x-auto max-h-[500px] bg-gray-800 rounded">
+              <h4 className="font-medium mb-2 text-muted-foreground">JSON</h4>
+              <pre className="p-4 font-mono text-sm text-foreground overflow-x-auto max-h-[500px] bg-muted/30 rounded">
                 {typeof report === "object" && report !== null && "json" in report ? JSON.stringify((report as Record<string, unknown>).json, null, 2) : "N/A"}
               </pre>
             </div>

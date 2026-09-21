@@ -28,6 +28,14 @@ const SEVERITY_RANK: Record<SeverityLevel, number> = {
   Info: 1,
 };
 
+const SEVERITY_DISPLAY: Record<SeverityLevel, { label: string; icon: string }> = {
+  Critical: { label: "CRITICAL", icon: "🔴" },
+  High: { label: "HIGH", icon: "🟠" },
+  Medium: { label: "MEDIUM", icon: "🟡" },
+  Low: { label: "LOW", icon: "🔵" },
+  Info: { label: "INFO", icon: "⚪" },
+};
+
 export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityLevel | "all">("all");
@@ -88,7 +96,7 @@ export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
   };
 
   const SortIcon = ({ key }: { key: keyof FindingResponse }) => {
-    if (sortConfig?.key !== key) return <ChevronDown className="h-4 w-4 text-gray-400" />;
+    if (sortConfig?.key !== key) return <ChevronDown className="h-4 w-4 text-muted-foreground" />;
     return sortConfig.direction === "asc" ? (
       <ChevronUp className="h-4 w-4 text-primary" />
     ) : (
@@ -101,22 +109,22 @@ export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-card border rounded-lg">
+      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-muted/50 border border-border rounded-lg">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search findings..."
-            className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary"
+            className="w-full pl-10 pr-4 py-2 border border-input bg-background focus:ring-2 focus:ring-ring focus:border-ring"
           />
         </div>
 
         <select
           value={severityFilter}
           onChange={(e) => setSeverityFilter(e.target.value as SeverityLevel | "all")}
-          className="px-4 py-2 border rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary"
+          className="px-4 py-2 border border-input bg-background focus:ring-2 focus:ring-ring focus:border-ring rounded-lg"
         >
           <option value="all">All Severities</option>
           {severities.map((s) => (
@@ -129,7 +137,7 @@ export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
         <select
           value={checkFilter}
           onChange={(e) => setCheckFilter(e.target.value)}
-          className="px-4 py-2 border rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary"
+          className="px-4 py-2 border border-input bg-background focus:ring-2 focus:ring-ring focus:border-ring rounded-lg"
         >
           <option value="all">All Checks</option>
           {checks.map((c) => (
@@ -146,7 +154,7 @@ export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
               setSeverityFilter("all");
               setCheckFilter("all");
             }}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
             Clear filters
@@ -155,15 +163,15 @@ export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-800/50">
+          <thead className="bg-muted/50">
             <tr>
               {SORTABLE_COLUMNS.map(({ key, label }) => (
                 <th
                   key={key}
                   onClick={() => handleSort(key)}
-                  className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
                 >
                   <div className="flex items-center gap-1">
                     {label}
@@ -173,46 +181,40 @@ export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-border">
             {filteredFindings.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   No findings match the current filters
                 </td>
               </tr>
             ) : (
-              filteredFindings.map((finding) => (
-                <tr key={finding.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <td className="px-4 py-3">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium", getSeverityColor(finding.severity))}>
-                      {getSeverityIcon(finding.severity)} {finding.severity}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-mono text-gray-600 dark:text-gray-400">
-                    {finding.check}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
-                      {finding.title}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                      {truncate(finding.evidence.url, 50)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                    {finding.score}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                    {(finding.confidence * 100).toFixed(0)}%
-                  </td>
-                </tr>
-              ))
+              filteredFindings.map((finding) => {
+                const severityInfo = SEVERITY_DISPLAY[finding.severity];
+                return (
+                  <tr key={finding.id} className="hover:bg-muted/50">
+                    <td className="px-4 py-3">
+                      <div className={cn("inline-flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm", getSeverityColor(finding.severity))}>
+                        <span className="text-lg">{severityInfo.icon}</span>
+                        <span className="uppercase tracking-wide">{severityInfo.label}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{finding.check}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-foreground truncate max-w-xs">{finding.title}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-xs">{truncate(finding.evidence.url, 50)}</div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{finding.score}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{(finding.confidence * 100).toFixed(0)}%</td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>
           Showing {filteredFindings.length} of {findings.length} findings
         </span>

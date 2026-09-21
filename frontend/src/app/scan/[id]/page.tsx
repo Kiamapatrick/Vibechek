@@ -7,15 +7,15 @@ import { ReportView } from "@/components/ReportView";
 import { ProgressLog } from "@/components/ProgressLog";
 import { ScanResponse, ScanStatus, FindingResponse, SeverityLevel } from "@/types/api";
 import { cn, formatRelativeTime, getSeverityColor } from "@/lib/utils";
-import { Shield, ArrowLeft, Loader2, AlertCircle, CheckCircle, XCircle, Clock, Terminal, Globe, AlertTriangle } from "lucide-react";
+import { Shield, ArrowLeft, Loader2, AlertCircle, CheckCircle, XCircle, Clock, Terminal, Globe, AlertTriangle, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 const STATUS_COLORS: Record<ScanStatus, string> = {
   pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  running: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  completed: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  failed: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  running: "bg-primary/10 text-primary dark:bg-primary/20",
+  completed: "bg-success/10 text-success dark:bg-success/20",
+  failed: "bg-destructive/10 text-destructive dark:bg-destructive/20",
 };
 
 const STATUS_ICONS: Record<ScanStatus, React.ComponentType<{ className?: string }>> = {
@@ -36,7 +36,7 @@ export default function ScanDetailPage() {
 
   if (scanLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -44,10 +44,10 @@ export default function ScanDetailPage() {
 
   if (!scan) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Scan not found</h1>
+          <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-foreground">Scan not found</h1>
           <Link href="/" className="mt-4 text-primary hover:underline">Back to dashboard</Link>
         </div>
       </div>
@@ -58,27 +58,27 @@ export default function ScanDetailPage() {
   const isActive = scan.status === "running";
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
+      <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/" className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                <ArrowLeft className="h-5 w-5 text-gray-500" />
+              <Link href="/" className="p-2 rounded-lg hover:bg-muted transition-colors">
+                <ArrowLeft className="h-5 w-5 text-muted-foreground" />
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white truncate max-w-md">{scan.target_url}</h1>
+                <h1 className="text-xl font-semibold text-foreground truncate max-w-md">{scan.target_url}</h1>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className={cn("px-2 py-1 rounded-full text-xs font-medium", STATUS_COLORS[scan.status])}>
+                  <span className={cn("px-3 py-1 rounded-full text-xs font-medium", STATUS_COLORS[scan.status])}>
                     <StatusIcon className={cn("h-3 w-3 mr-1", isActive && "animate-spin")} />
                     {scan.status.charAt(0).toUpperCase() + scan.status.slice(1)}
                   </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="text-sm text-muted-foreground">
                     Started {formatRelativeTime(scan.created_at)}
                   </span>
                   {scan.status === "completed" && (
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                    <span className="text-sm text-muted-foreground">
                       Completed {formatRelativeTime(scan.updated_at)}
                     </span>
                   )}
@@ -88,7 +88,7 @@ export default function ScanDetailPage() {
           </div>
 
           {/* Tabs */}
-          <div className="mt-4 border-t border-gray-200 dark:border-gray-800">
+          <div className="mt-4 border-t border-border">
             <nav className="flex gap-8 overflow-x-auto" aria-label="Scan tabs">
               {[
                 { id: "progress", label: "Progress", icon: Terminal },
@@ -104,14 +104,14 @@ export default function ScanDetailPage() {
                     "flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap",
                     activeTab === tab.id
                       ? "border-primary text-primary"
-                      : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300",
+                      : "border-transparent text-muted-foreground hover:text-foreground",
                     tab.id !== "progress" && scan.status !== "completed" && "opacity-50 cursor-not-allowed"
                   )}
                 >
                   <tab.icon className="h-4 w-4" />
                   {tab.label}
                   {tab.count !== undefined && (
-                    <span className={cn("px-2 py-0.5 text-xs rounded-full", activeTab === tab.id ? "bg-primary/20" : "bg-gray-100 dark:bg-gray-800")}>
+                    <span className={cn("px-2 py-0.5 text-xs rounded-full", activeTab === tab.id ? "bg-primary/20" : "bg-muted")}>
                       {tab.count}
                     </span>
                   )}
@@ -133,20 +133,20 @@ export default function ScanDetailPage() {
           <div className="space-y-6">
             {stats && (
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {["Critical", "High", "Medium", "Low", "Info"].map((severity) => (
+                {(["Critical", "High", "Medium", "Low", "Info"] as SeverityLevel[]).map((severity) => (
                   <div
                     key={severity}
-                    className={cn("p-4 rounded-lg text-center", getSeverityColor(severity).replace("text-", "bg-").replace("dark:bg-", "dark:bg-").replace("dark:text-", "dark:bg-").replace("800", "100").replace("400", "900/30"))}
+                    className={cn("p-4 rounded-lg text-center border", getSeverityColor(severity).replace("bg-", "border-").replace("text-", "text-"))}
                   >
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.by_severity[severity as SeverityLevel] || 0}</div>
-                    <div className="text-xs font-medium">{severity}</div>
+                    <div className="text-3xl font-bold text-foreground">{stats.by_severity[severity] || 0}</div>
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{severity}</div>
                   </div>
                 ))}
               </div>
             )}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+            <div className="bg-card border border-border rounded-lg">
               {findingsLoading ? (
-                <div className="p-8 text-center text-gray-500">Loading findings...</div>
+                <div className="p-8 text-center text-muted-foreground">Loading findings...</div>
               ) : (
                 <div className="p-4">
                   {findings && findings.length > 0 ? (
@@ -156,9 +156,9 @@ export default function ScanDetailPage() {
                     </>
                   ) : (
                     <div className="p-12 text-center">
-                      <Shield className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No findings</h3>
-                      <p className="text-gray-500 dark:text-gray-400">The scan completed with no security issues detected</p>
+                      <Shield className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-foreground mb-2">No findings</h3>
+                      <p className="text-muted-foreground">The scan completed with no security issues detected</p>
                     </div>
                   )}
                 </div>
@@ -180,8 +180,8 @@ export default function ScanDetailPage() {
         {activeTab !== "progress" && scan.status !== "completed" && (
           <div className="p-8 text-center">
             <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Scan not completed</h3>
-            <p className="text-gray-500 dark:text-gray-400">Wait for the scan to finish before viewing this section</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">Scan not completed</h3>
+            <p className="text-muted-foreground">Wait for the scan to finish before viewing this section</p>
           </div>
         )}
       </main>
@@ -192,32 +192,32 @@ export default function ScanDetailPage() {
 // Local FindingsTable component for this page
 function FindingsTable({ findings }: { findings: FindingResponse[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full">
-        <thead className="bg-gray-50 dark:bg-gray-800/50">
+        <thead className="bg-muted/50">
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Severity</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Check</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Title</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Score</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Confidence</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Severity</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Check</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Title</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Score</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confidence</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className="divide-y divide-border">
           {findings.map((finding) => (
-            <tr key={finding.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+            <tr key={finding.id} className="hover:bg-muted/50">
               <td className="px-4 py-3">
                 <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium", getSeverityColor(finding.severity))}>
                   {finding.severity}
                 </span>
               </td>
-              <td className="px-4 py-3 text-sm font-mono text-gray-600 dark:text-gray-400">{finding.check}</td>
+              <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{finding.check}</td>
               <td className="px-4 py-3">
-                <div className="font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">{finding.title}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{finding.evidence.url}</div>
+                <div className="font-medium text-foreground truncate max-w-xs">{finding.title}</div>
+                <div className="text-xs text-muted-foreground truncate max-w-xs">{finding.evidence.url}</div>
               </td>
-              <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{finding.score}</td>
-              <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{(finding.confidence * 100).toFixed(0)}%</td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{finding.score}</td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{(finding.confidence * 100).toFixed(0)}%</td>
             </tr>
           ))}
         </tbody>

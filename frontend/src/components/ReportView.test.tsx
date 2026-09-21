@@ -301,10 +301,10 @@ describe('ReportView', () => {
     });
 
     const plainTab = screen.getByText('Plain');
-    expect(plainTab).toHaveClass('bg-white');
+    expect(plainTab).toHaveClass('bg-background');
 
     await user.click(screen.getByText('Json'));
     const jsonTab = screen.getByText('Json');
-    expect(jsonTab).toHaveClass('bg-white');
+    expect(jsonTab).toHaveClass('bg-background');
   });
 });

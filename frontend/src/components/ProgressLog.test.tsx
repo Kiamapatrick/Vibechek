@@ -90,7 +90,7 @@ describe('ProgressLog', () => {
     });
 
     expect(screen.getByText('Waiting for progress updates...')).toBeInTheDocument();
-    expect(screen.getByText('● Connected')).toBeInTheDocument();
+    expect(screen.getByText('Connected')).toBeInTheDocument();
   });
 
   it('connects to SSE endpoint', () => {
@@ -207,7 +207,7 @@ describe('ProgressLog', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Scan completed')).toBeInTheDocument();
-      expect(screen.getByText('○ Disconnected')).toBeInTheDocument();
+      expect(screen.getByText('Disconnected')).toBeInTheDocument();
     });
   });
 
@@ -238,7 +238,7 @@ describe('ProgressLog', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Stream timeout after 300s')).toBeInTheDocument();
-      expect(screen.getByText('○ Disconnected')).toBeInTheDocument();
+      expect(screen.getByText('Disconnected')).toBeInTheDocument();
     });
   });
 
@@ -251,7 +251,7 @@ describe('ProgressLog', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('○ Disconnected')).toBeInTheDocument();
+      expect(screen.getByText('Disconnected')).toBeInTheDocument();
     });
   });
 

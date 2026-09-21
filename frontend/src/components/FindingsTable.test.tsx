@@ -151,11 +151,11 @@ describe('FindingsTable', () => {
     const dataRows = rows.slice(1); // Skip header
 
     expect(dataRows).toHaveLength(5);
-    expect(dataRows[0]).toHaveTextContent('Critical');
-    expect(dataRows[1]).toHaveTextContent('High');
-    expect(dataRows[2]).toHaveTextContent('Medium');
-    expect(dataRows[3]).toHaveTextContent('Low');
-    expect(dataRows[4]).toHaveTextContent('Info');
+    expect(dataRows[0]).toHaveTextContent('CRITICAL');
+    expect(dataRows[1]).toHaveTextContent('HIGH');
+    expect(dataRows[2]).toHaveTextContent('MEDIUM');
+    expect(dataRows[3]).toHaveTextContent('LOW');
+    expect(dataRows[4]).toHaveTextContent('INFO');
   });
 
   it('shows correct stats in severity filter dropdown', () => {
@@ -179,7 +179,7 @@ describe('FindingsTable', () => {
     await waitFor(() => {
       const rows = screen.getAllByRole('row').slice(1);
       expect(rows).toHaveLength(1);
-      expect(rows[0]).toHaveTextContent('Critical');
+      expect(rows[0]).toHaveTextContent('CRITICAL');
       expect(rows[0]).toHaveTextContent('Reflected XSS');
     });
   });
@@ -213,8 +213,8 @@ describe('FindingsTable', () => {
 
     await waitFor(() => {
       const rows = screen.getAllByRole('row').slice(1);
-      expect(rows[0]).toHaveTextContent('Info');
-      expect(rows[4]).toHaveTextContent('Critical');
+      expect(rows[0]).toHaveTextContent('INFO');
+      expect(rows[4]).toHaveTextContent('CRITICAL');
     });
   });
 
@@ -225,8 +225,8 @@ describe('FindingsTable', () => {
 
     await waitFor(() => {
       const rows = screen.getAllByRole('row').slice(1);
-      expect(rows[0]).toHaveTextContent('Critical');
-      expect(rows[4]).toHaveTextContent('Info');
+      expect(rows[0]).toHaveTextContent('CRITICAL');
+      expect(rows[4]).toHaveTextContent('INFO');
     });
   });
 
