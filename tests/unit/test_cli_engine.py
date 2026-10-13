@@ -482,4 +482,4 @@ class TestScannerEngine:
             max_depth=5,
             max_pages=100
         )
-        mock_http_class.assert_called_once_with(timeout=30.0)
+        mock_http_class.assert_called_once_with(timeout=30.0, allow_private_targets=True)
