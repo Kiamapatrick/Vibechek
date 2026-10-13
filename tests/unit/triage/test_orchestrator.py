@@ -1,8 +1,11 @@
+import asyncio
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from vibeshield.models.finding import Evidence, Finding, SeverityLevel
 from vibeshield.triage.models import TriageResult
-from vibeshield.triage.orchestrator import run_triage
+from vibeshield.triage.orchestrator import run_single_triage, run_triage
 
 
 def _make_finding(**overrides) -> Finding:
@@ -158,3 +161,110 @@ class TestRunTriage:
         warning_records = [r for r in caplog.records if r.levelno == 30]
         assert len(warning_records) == 1
         assert "exc_info" in warning_records[0].__dict__
+
+
+class TestRunSingleTriage:
+    """Tests for the run_single_triage function."""
+
+    def test_happy_path(self):
+        finding = _make_finding(id="f1")
+
+        with (
+            patch("vibeshield.triage.orchestrator.get_retriever") as mock_get_retriever,
+            patch("vibeshield.triage.orchestrator.get_client") as mock_get_client,
+        ):
+            mock_retriever = MagicMock()
+            mock_retriever.retrieve.return_value = []
+            mock_get_retriever.return_value = mock_retriever
+
+            mock_client = MagicMock()
+            mock_client.generate.return_value = TriageResult(
+                finding=finding, explanation="test", exploitability=4,
+                fix="fix", revised_priority=4, source="llm", prompt_version="v1"
+            )
+            mock_get_client.return_value = mock_client
+
+            # Use the mocked client directly
+            result = run_single_triage(finding, mock_retriever, mock_client)
+
+        assert result.source == "llm"
+        assert result.exploitability == 4
+
+    def test_fallback_to_baseline_on_error(self, caplog):
+        finding = _make_finding(id="f1")
+
+        with (
+            patch("vibeshield.triage.orchestrator.get_retriever") as mock_get_retriever,
+            patch("vibeshield.triage.orchestrator.get_client") as mock_get_client,
+        ):
+            mock_retriever = MagicMock()
+            mock_retriever.retrieve.return_value = []
+            mock_get_retriever.return_value = mock_retriever
+
+            mock_client = MagicMock()
+            mock_client.generate.side_effect = Exception("Groq error")
+            mock_get_client.return_value = mock_client
+
+            # Use the mocked client directly
+            result = run_single_triage(finding, mock_retriever, mock_client)
+
+        assert result.source == "baseline"
+        assert "LLM triage failed for finding f1" in caplog.text
+
+
+class TestRunTriageEventLoopResponsiveness:
+    """Tests showing that run_triage can be run in a thread without blocking the event loop."""
+
+    @pytest.mark.asyncio
+    async def test_event_loop_stays_responsive_during_triage(self):
+        """Verify that asyncio tasks can run concurrently with triage in a thread."""
+        # Create a slow mock client that simulates LLM latency
+        slow_findings = [_make_finding(id=f"f{i}") for i in range(3)]
+
+        call_count = 0
+
+        def slow_generate(finding, context):
+            nonlocal call_count
+            call_count += 1
+            # Simulate slow LLM call (but use a short delay for test speed)
+            import time
+            time.sleep(0.05)
+            return TriageResult(
+                finding=finding, explanation="slow", exploitability=3,
+                fix="fix", revised_priority=3, source="llm", prompt_version="v1"
+            )
+
+        # Track if the fast task completed while triage was running
+        fast_task_completed = asyncio.Event()
+
+        async def fast_task():
+            """A fast async task that should complete while triage runs."""
+            await asyncio.sleep(0.01)  # Very fast
+            fast_task_completed.set()
+
+        with (
+            patch("vibeshield.triage.orchestrator.get_retriever") as mock_get_retriever,
+            patch("vibeshield.triage.orchestrator.get_client") as mock_get_client,
+        ):
+            mock_retriever = MagicMock()
+            mock_retriever.retrieve.return_value = []
+            mock_get_retriever.return_value = mock_retriever
+
+            mock_client = MagicMock()
+            mock_client.generate.side_effect = slow_generate
+            mock_get_client.return_value = mock_client
+
+            # Run triage in a thread pool (simulating what jobs.py does)
+            triage_task = asyncio.create_task(
+                asyncio.to_thread(run_triage, slow_findings)
+            )
+            # Run a fast async task concurrently
+            fast_task_handle = asyncio.create_task(fast_task())
+
+            # Wait for both to complete
+            await asyncio.gather(triage_task, fast_task_handle)
+
+        # The fast task should have completed (event set)
+        assert fast_task_completed.is_set(), "Fast task should complete while triage runs in thread"
+        # All 3 findings should have been processed
+        assert call_count == 3

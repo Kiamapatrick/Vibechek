@@ -2,11 +2,35 @@ import logging
 
 from vibeshield.models.finding import Finding
 from vibeshield.triage.baseline import baseline_triage
-from vibeshield.triage.context.retriever import get_retriever
-from vibeshield.triage.llm.client import get_client
+from vibeshield.triage.context.retriever import BM25Retriever, get_retriever
+from vibeshield.triage.llm.client import GroqClient, get_client
 from vibeshield.triage.models import TriageResult
 
 log = logging.getLogger(__name__)
+
+
+def run_single_triage(
+    finding: Finding,
+    retriever: BM25Retriever,
+    client: GroqClient,
+) -> TriageResult:
+    """Run LLM triage on a single finding with baseline fallback.
+
+    This function can be called from async code via asyncio.to_thread
+    to avoid blocking the event loop.
+    """
+    try:
+        context = retriever.retrieve(finding)
+        result = client.generate(finding, context)
+        return result
+    except Exception as e:
+        log.warning(
+            "LLM triage failed for finding %s (%s), falling back to baseline: %s",
+            finding.id, finding.title, e,
+            exc_info=True
+        )
+        # Fallback to baseline for this finding
+        return baseline_triage(finding)
 
 
 def run_triage(findings: list[Finding]) -> list[TriageResult]:
@@ -33,17 +57,7 @@ def run_triage(findings: list[Finding]) -> list[TriageResult]:
     results: list[TriageResult] = []
 
     for finding in findings:
-        try:
-            context = retriever.retrieve(finding)
-            result = client.generate(finding, context)
-            results.append(result)
-        except Exception as e:
-            log.warning(
-                "LLM triage failed for finding %s (%s), falling back to baseline: %s",
-                finding.id, finding.title, e,
-                exc_info=True
-            )
-            # Fallback to baseline for this finding
-            results.append(baseline_triage(finding))
+        result = run_single_triage(finding, retriever, client)
+        results.append(result)
 
     return results
