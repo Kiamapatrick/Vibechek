@@ -1,8 +1,13 @@
-
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+    )
+
     MONGODB_URI: str = "mongodb://localhost:27017"
     MONGODB_DB: str = "vibeshield"
     MONGODB_MAX_RETRIES: int = 3
@@ -13,12 +18,9 @@ class Settings(BaseSettings):
     MONGODB_CONNECT_TIMEOUT_MS: int = 10000
     MONGODB_SOCKET_TIMEOUT_MS: int = 20000
     MONGODB_FAILURE_COOLDOWN_SECONDS: float = 5.0
-    
+
     # Groq LLM
     GROQ_API_KEY: str | None = None
-    GROQ_MODEL: str = "llama-3.1-70b-versatile"
-    GROQ_MAX_RETRIES: int = 3
-    GROQ_TIMEOUT: float = 30.0
 
     # Scanner defaults
     DEFAULT_TIMEOUT: float = 10.0
@@ -34,10 +36,8 @@ class Settings(BaseSettings):
     SSE_STREAM_MAX_DURATION_SECONDS: int = 600
     SSE_STREAM_POLL_INTERVAL_SECONDS: float = 1.0
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
+    # Security
+    ALLOW_PRIVATE_TARGETS: bool = False
 
 
 settings = Settings()

@@ -37,6 +37,7 @@ class ScanRequest(BaseModel):
     max_depth: int = Field(default=2, ge=0, le=10)
     timeout: float = Field(default=10.0, ge=1.0, le=300.0)
     allow_write_tests: bool = False
+    confirm_ownership: bool = False
 
 
 class ScanProgress(BaseModel):

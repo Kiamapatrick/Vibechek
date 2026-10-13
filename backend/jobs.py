@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from backend.config import settings
 from backend.database import get_db
 from backend.models import (
     Evidence,
@@ -71,17 +72,19 @@ async def run_scan(scan_id: UUID, scan_data: ScanCreate) -> None:
         await update_scan_status(scan_id, ScanStatus.RUNNING)
         await log_progress(scan_id, "info", f"Starting scan of {scan_data.target_url}", "scan")
 
+        async def progress_callback(stage: str, data: dict[str, Any]) -> None:
+            """Forward ScannerEngine progress to progress logs."""
+            await log_progress(scan_id, "info", f"{stage}: {data}", "scan")
+
         engine = ScannerEngine(
             target_url=scan_data.target_url,
             max_depth=scan_data.max_depth,
             max_pages=scan_data.max_pages,
             timeout=scan_data.timeout,
             allow_write_tests=scan_data.allow_write_tests,
+            allow_private_targets=settings.ALLOW_PRIVATE_TARGETS,
+            progress_callback=progress_callback,
         )
-
-        # Progress callback would need ScannerEngine modification
-        # For now, run and log at key points
-        await log_progress(scan_id, "info", "Running reconnaissance...", "recon")
 
         plain_report, json_report = await engine.run()
 
@@ -250,6 +253,8 @@ async def run_baseline_triage(scan_id: UUID, triage_data: TriageRunCreate) -> No
 async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
     """Background task to run LLM triage with streaming support."""
 
+    import asyncio
+
     from vibeshield.models.finding import Finding
     from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel
     from vibeshield.triage.orchestrator import run_triage
@@ -309,8 +314,8 @@ async def run_llm_triage(scan_id: UUID, triage_data: TriageRunCreate) -> None:
 
         await log_progress(scan_id, "info", f"Triaging {len(findings)} findings with LLM", "triage")
 
-        # Run LLM triage
-        triage_results = run_triage(findings)
+        # Run LLM triage in thread pool to avoid blocking the event loop
+        triage_results = await asyncio.to_thread(run_triage, findings)
 
         # Convert to API models
         results = []

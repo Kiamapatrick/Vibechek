@@ -320,6 +320,9 @@ export const handlers = [
 
   http.post('/api/scans', async ({ request }) => {
     const body = await request.json() as ScanRequest;
+    if (!body.confirm_ownership) {
+      return HttpResponse.json({ error: 'confirm_ownership must be true to start a scan' }, { status: 400 });
+    }
     const newScan: ScanResponse = {
       scan_id: `scan-${Date.now()}`,
       status: 'pending',
@@ -423,6 +426,12 @@ export const handlers = [
 ];
 
 export const errorHandlers = [
-  http.post('/api/scans', () => HttpResponse.json({ error: 'Invalid URL' }, { status: 400 })),
+  http.post('/api/scans', async ({ request }) => {
+    const body = await request.json() as ScanRequest;
+    if (!body.confirm_ownership) {
+      return HttpResponse.json({ error: 'confirm_ownership must be true to start a scan' }, { status: 400 });
+    }
+    return HttpResponse.json({ error: 'Invalid URL' }, { status: 400 });
+  }),
   http.get('/api/scans/:scanId', () => HttpResponse.json({ error: 'Not found' }, { status: 404 })),
 ];

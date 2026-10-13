@@ -13,6 +13,7 @@ export function ScanWizard() {
   const [maxDepth, setMaxDepth] = useState(2);
   const [timeoutSeconds, setTimeoutSeconds] = useState(10);
   const [allowWriteTests, setAllowWriteTests] = useState(false);
+  const [confirmOwnership, setConfirmOwnership] = useState(false);
   const [error, setError] = useState("");
 
   const { mutate: startScan, isPending } = useStartScan();
@@ -28,6 +29,7 @@ export function ScanWizard() {
         max_depth: maxDepth,
         timeout: timeoutSeconds,
         allow_write_tests: allowWriteTests,
+        confirm_ownership: confirmOwnership,
       },
       {
         onSuccess: (newScan) => {
@@ -141,6 +143,20 @@ export function ScanWizard() {
         </label>
       </div>
 
+      <div className="flex items-center gap-3">
+        <input
+          id="confirmOwnership"
+          type="checkbox"
+          checked={confirmOwnership}
+          onChange={(e) => setConfirmOwnership(e.target.checked)}
+          required
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+        />
+        <label htmlFor="confirmOwnership" className="text-sm text-gray-700 dark:text-gray-300">
+          I confirm I own or have explicit permission to scan this target
+        </label>
+      </div>
+
       {error && (
         <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <AlertCircle className="h-5 w-5 text-red-500" />
@@ -150,11 +166,11 @@ export function ScanWizard() {
 
       <button
         type="submit"
-        disabled={isPending || !url}
+        disabled={isPending || !url || !confirmOwnership}
         className={cn(
           "w-full py-3 px-4 rounded-lg font-medium transition-colors",
           "focus:ring-2 focus:ring-primary focus:ring-offset-2",
-          isPending || !url
+          isPending || !url || !confirmOwnership
             ? "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600"
             : "bg-primary text-primary-foreground hover:bg-primary/90"
         )}

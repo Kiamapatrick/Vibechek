@@ -3,6 +3,7 @@ import logging
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
@@ -71,16 +72,21 @@ async def database_unavailable_handler(request: Request, exc: DatabaseUnavailabl
 @app.post("/api/scans", response_model=ScanResponse, status_code=202)
 async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks) -> ScanResponse:
     """Start a new security scan."""
+    if not request.confirm_ownership:
+        raise HTTPException(400, "confirm_ownership must be true to start a scan")
+
     db = await get_db()
+
+    target_url = str(request.url)
 
     scan_data = ScanCreate(
         url=request.url,
         scan_id=uuid4(),
-        target_url=str(request.url),
+        target_url=target_url,
         max_pages=request.max_pages,
         max_depth=request.max_depth,
         timeout=request.timeout,
-        allow_write_tests=request.allow_write_tests,
+        allow_write_tests=request.allow_write_tests if request.confirm_ownership else False,
     )
 
     await db.scans.insert_one(scan_data.model_dump(mode="json"))
@@ -444,6 +450,15 @@ async def regenerate_triage(
     background_tasks: BackgroundTasks,
 ) -> TriageRunResponse:
     """Regenerate triage for a single finding (LLM only)."""
+    import asyncio
+
+    from vibeshield.models.finding import Evidence as CoreEvidence
+    from vibeshield.models.finding import Finding
+    from vibeshield.models.finding import SeverityLevel as CoreSeverityLevel
+    from vibeshield.triage.context.retriever import get_retriever
+    from vibeshield.triage.llm.client import get_client
+    from vibeshield.triage.orchestrator import run_single_triage
+
     db = await get_db()
 
     triage = await db.triage_runs.find_one({"triage_id": str(triage_id)})
@@ -457,14 +472,91 @@ async def regenerate_triage(
     if not finding_doc:
         raise HTTPException(404, "Finding not found")
 
-    # Not yet implemented — single-finding regeneration requires orchestrator changes.
-    # Caller should use POST /api/scans/{scan_id}/triage with mode=llm for full re-triage.
-    raise HTTPException(
-        status_code=501,
-        detail=(
-            "Single-finding regeneration not yet implemented; "
-            "use POST /api/scans/{scan_id}/triage with mode=llm for full re-triage"
-        ).format(scan_id=triage["scan_id"]),
+    # Load the finding into a core Finding object
+    wstg_id = finding_doc.get("wstg_id")
+    if wstg_id is None:
+        log.warning(f"Finding {finding_doc.get('id')} missing wstg_id (stale/legacy document) — using placeholder")
+        wstg_id = "UNKNOWN"
+
+    evidence = CoreEvidence(
+        url=finding_doc["evidence"]["url"],
+        snippet=finding_doc["evidence"]["snippet"],
+        matched_pattern=finding_doc["evidence"].get("matched_pattern"),
+        request_headers=finding_doc["evidence"].get("request_headers", {}),
+        response_headers=finding_doc["evidence"].get("response_headers", {}),
+        response_status=finding_doc["evidence"].get("response_status"),
+    )
+    finding = Finding(
+        id=finding_doc["id"],
+        check=finding_doc["check"],
+        title=finding_doc["title"],
+        severity=CoreSeverityLevel(finding_doc["severity"]),
+        score=finding_doc["score"],
+        impact=finding_doc["impact"],
+        likelihood=finding_doc["likelihood"],
+        wstg_id=wstg_id,
+        attck_ids=finding_doc.get("attck_ids", []),
+        evidence=evidence,
+        confidence=finding_doc["confidence"],
+        remediation=finding_doc["remediation"],
+        references=finding_doc.get("references", []),
+    )
+
+    # Run single-finding triage in thread pool
+    retriever = get_retriever()
+    try:
+        client = get_client()
+    except Exception as e:
+        log.warning("LLM client initialization failed, using baseline for regeneration: %s", e, exc_info=True)
+        from vibeshield.triage.baseline import baseline_triage
+        triage_result = baseline_triage(finding)
+    else:
+        triage_result = await asyncio.to_thread(run_single_triage, finding, retriever, client)
+
+    # Convert to API model
+    from backend.models import SeverityLevel, TriageResult, TriageSource
+    result = TriageResult(
+        finding_id=triage_result.finding.id,
+        finding_title=triage_result.finding.title,
+        explanation=triage_result.explanation,
+        exploitability=triage_result.exploitability,
+        fix=triage_result.fix,
+        revised_priority=triage_result.revised_priority,
+        source=TriageSource(triage_result.source),
+        prompt_version=triage_result.prompt_version,
+        original_severity=SeverityLevel(triage_result.finding.severity.value),
+    )
+
+    # Update the triage run with the new result
+    results = list(triage.get("results", []))
+    # Replace the matching finding's result
+    for i, r in enumerate(results):
+        if r["finding_id"] == finding_id:
+            results[i] = result.model_dump(mode="json")
+            break
+    else:
+        # If not found, append it
+        results.append(result.model_dump(mode="json"))
+
+    await db.triage_runs.update_one(
+        {"triage_id": str(triage_id)},
+        {"$set": {"results": results, "updated_at": datetime.now(UTC)}}
+    )
+
+    # Fetch updated triage run
+    updated_triage = await db.triage_runs.find_one({"triage_id": str(triage_id)})
+    if not updated_triage:
+        raise HTTPException(500, "Failed to fetch updated triage run")
+
+    return TriageRunResponse(
+        triage_id=UUID(updated_triage["triage_id"]),
+        scan_id=UUID(updated_triage["scan_id"]),
+        mode=TriageMode(updated_triage["mode"]),
+        status=updated_triage["status"],
+        results=[TriageResult(**r) for r in updated_triage.get("results", [])],
+        created_at=updated_triage["created_at"],
+        completed_at=updated_triage.get("completed_at"),
+        error=updated_triage.get("error"),
     )
 
 

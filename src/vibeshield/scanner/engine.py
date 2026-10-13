@@ -1,6 +1,8 @@
 import logging
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any
 
 from vibeshield.config import settings
 from vibeshield.models.finding import Finding, SeverityLevel
@@ -21,17 +23,31 @@ class ScannerEngine:
         max_pages: int = settings.DEFAULT_MAX_PAGES,
         timeout: float = settings.DEFAULT_TIMEOUT,
         allow_write_tests: bool = False,
+        allow_private_targets: bool = True,
+        progress_callback: Callable[[str, dict[str, Any]], Any] | None = None,
     ):
         self.target_url = target_url
         self.max_depth = max_depth
         self.max_pages = max_pages
         self.timeout = timeout
         self.allow_write_tests = allow_write_tests
+        self.allow_private_targets = allow_private_targets
+        self.progress_callback = progress_callback
+
+    async def _emit_progress(self, stage: str, data: dict[str, Any]) -> None:
+        """Emit progress event if callback is registered."""
+        if self.progress_callback:
+            try:
+                await self.progress_callback(stage, data)
+            except Exception:
+                log.warning("Progress callback failed", exc_info=True)
 
     async def run(self) -> tuple[PlainReport, JSONReport]:
         start_time = time.time()
 
-        async with HTTPClient(timeout=self.timeout) as http:
+        await self._emit_progress("recon_start", {"target_url": self.target_url})
+
+        async with HTTPClient(timeout=self.timeout, allow_private_targets=self.allow_private_targets) as http:
             recon = await self._run_reconnaissance(http)
             findings = await self._run_checks(recon, http)
 
@@ -58,6 +74,11 @@ class ScannerEngine:
             pages_crawled=len(recon.pages),
             checks_run=[check.__name__ for check in ALL_CHECKS],
         )
+
+        await self._emit_progress("scan_complete", {
+            "pages_crawled": len(recon.pages),
+            "findings_found": len(findings),
+        })
 
         json_report = JSONReport(
             scan_metadata=scan_metadata,
@@ -88,14 +109,21 @@ class ScannerEngine:
 
         for check_class in ALL_CHECKS:
             check = check_class()  # type: ignore
+            check_name = check.__class__.__name__
             # Pass allow_write_tests to checks that declare it
             if hasattr(check, "allow_write_tests"):
                 check.allow_write_tests = self.allow_write_tests
             try:
+                await self._emit_progress("check_start", {"check": check_name})
                 findings = await check.run(recon, http)
+                await self._emit_progress("check_complete", {
+                    "check": check_name,
+                    "findings_found": len(findings),
+                })
                 all_findings.extend(findings)
             except Exception:
                 log.warning("Check failed, continuing", exc_info=True)
+                await self._emit_progress("check_error", {"check": check_name})
 
         return all_findings
 

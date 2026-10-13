@@ -24,6 +24,7 @@ export interface ScanRequest {
   max_depth?: number;
   timeout?: number;
   allow_write_tests?: boolean;
+  confirm_ownership: boolean;
 }
 
 export interface ScanResponse {
