@@ -247,36 +247,71 @@ This makes the tool's judgments traceable to established methodology, not vibes 
 
 ```bash
 # Clone and install in dev mode
-git clone https://github.com/your-org/vibeshield
-cd vibeshield
+git clone https://github.com/Kiamapatrick/Vibechek
+cd Vibechek
 pip install -e ".[dev]"
+```
 
-# Run tests
+## Backend, Frontend & Docker Compose
+
+VibeShield includes three components:
+
+### Backend API (FastAPI + MongoDB)
+```bash
+cd backend
+pip install -e ".[backend]"
+uvicorn main:app --reload
+```
+Or run with Docker Compose (starts MongoDB + backend + frontend):
+```bash
+docker compose up
+```
+The API will be available at `http://localhost:8000` with Swagger docs at `http://localhost:8000/docs`.
+
+### Frontend (Next.js + React)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The frontend will be available at `http://localhost:3000` and proxies API calls to the backend.
+
+### Docker Compose (Full Stack)
+```bash
+docker compose up --build
+```
+This starts:
+- MongoDB on port 27017
+- Backend API on port 8000
+- Frontend on port 3000
+
+Environment variables:
+- `GROQ_API_KEY` — Required for LLM triage (optional for baseline-only)
+- `ALLOW_PRIVATE_TARGETS` — Set to `true` to allow scanning localhost/private IPs (default: `false`)
+
+### Ownership Confirmation (Required)
+
+**All scans require explicit ownership confirmation** via the `confirm_ownership` parameter. This is both an ethical/legal safeguard and a credibility signal.
+
+- **CLI**: Use `--confirm-ownership` or `-y` flag
+- **API**: Include `"confirm_ownership": true` in the scan request
+- **Frontend**: Check the "I confirm I own or have explicit permission to scan this target" checkbox
+
+> Only scan applications you own or have explicit written permission to test. Unauthorized scanning is unethical and may violate laws including the CFAA (US) and Computer Misuse Act (UK).
+
+## Running Tests
+
+```bash
+# Python tests (includes backend + scanner)
 pytest
 
 # Lint
-ruff check src tests
+ruff check src backend tests
 
 # Type check
-mypy src
-```
+mypy src backend --explicit-package-bases
 
-> **Note for eval harness:** The triage evaluation golden set (`src/vibeshield/triage/eval/golden.json`) contains `real_scan` entries bootstrapped from a specific frozen report at `tests/fixtures/golden_report.json`. Re-running `vibeshield scan` generates new random `finding.id` values — to evaluate against the golden set, generate triage results from that exact frozen report, not a fresh scan. See `scripts/bootstrap_golden.py` for details.
-
-## Frontend Test Status
-
-The React/Next.js frontend (`frontend/`) has full test coverage with **64/64 tests passing** across 5 test suites:
-
-| Test Suite | Tests | Status |
-|------------|-------|--------|
-| `TriageView` | 9 | ✅ Passing |
-| `ReportView` | 12 | ✅ Passing |
-| `ScanWizard` | 11 | ✅ Passing |
-| `ProgressLog` | 14 | ✅ Passing |
-| `FindingsTable` | 18 | ✅ Passing |
-
-Run frontend tests:
-```bash
+# Frontend tests
 cd frontend && npm test
 ```
 

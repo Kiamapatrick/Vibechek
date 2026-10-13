@@ -385,8 +385,8 @@ class TestRegenerateTriage:
     """Tests for POST /api/triage/{triage_id}/regenerate"""
 
     @pytest.mark.asyncio
-    async def test_returns_501_with_workaround_message(self, async_client, mock_db):
-        """Returns 501 with clear message pointing to full re-triage."""
+    async def test_regenerates_single_finding(self, async_client, mock_db):
+        """Regenerates triage for a single finding (falls back to baseline without API key)."""
         scan_id = uuid4()
         await _create_scan(mock_db, scan_id, status=ScanStatus.COMPLETED)
         await _create_triage_run(mock_db, scan_id, mode=TriageMode.LLM)
@@ -394,7 +394,7 @@ class TestRegenerateTriage:
         triage_doc = await mock_db.triage_runs.find_one({"scan_id": str(scan_id)})
         triage_id = triage_doc["triage_id"]
 
-        # Need a finding to exist for the 501 path (it validates finding exists)
+        # Create a finding
         finding = await _create_finding(scan_id, "finding-1")
         await mock_db.findings.insert_one(finding)
 
@@ -402,11 +402,15 @@ class TestRegenerateTriage:
             f"/api/triage/{triage_id}/regenerate",
             params={"finding_id": "finding-1"},
         )
-        assert response.status_code == 501
-        detail = response.json()["detail"]
-        assert "Single-finding regeneration not yet implemented" in detail
-        assert "mode=llm" in detail
-        assert str(scan_id) in detail
+        assert response.status_code == 202
+        data = response.json()
+        assert "results" in data
+        # Should have at least one result (the regenerated one)
+        assert len(data["results"]) >= 1
+        # The regenerated result should have baseline source (no API key)
+        regenerated = next((r for r in data["results"] if r["finding_id"] == "finding-1"), None)
+        assert regenerated is not None
+        assert regenerated["source"] == "baseline"
 
     @pytest.mark.asyncio
     async def test_triage_not_found(self, async_client, mock_db):
