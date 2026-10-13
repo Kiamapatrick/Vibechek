@@ -211,6 +211,28 @@ class TestGroqClientConstruction:
         client = GroqClient(api_key="fake-key")
         assert client._model == "openai/gpt-oss-20b"  # from settings default
 
+    def test_groq_model_env_var_changes_model(self, monkeypatch):
+        """GROQ_MODEL env var should change the model used by the client."""
+        monkeypatch.setenv("GROQ_MODEL", "custom-model-from-env")
+        config_module._settings = None
+        client = GroqClient(api_key="fake-key")
+        assert client._model == "custom-model-from-env"
+
+    def test_model_env_var_changes_model(self, monkeypatch):
+        """MODEL env var (alias) should also change the model used by the client."""
+        monkeypatch.setenv("MODEL", "custom-model-from-model-env")
+        config_module._settings = None
+        client = GroqClient(api_key="fake-key")
+        assert client._model == "custom-model-from-model-env"
+
+    def test_groq_model_takes_precedence_over_model(self, monkeypatch):
+        """When both GROQ_MODEL and MODEL are set, GROQ_MODEL should win."""
+        monkeypatch.setenv("GROQ_MODEL", "from-groq-model")
+        monkeypatch.setenv("MODEL", "from-model")
+        config_module._settings = None
+        client = GroqClient(api_key="fake-key")
+        assert client._model == "from-groq-model"
+
 
 class TestGroqClientRetry:
     """Retries only apply to transient errors (rate limit, timeout, connection).

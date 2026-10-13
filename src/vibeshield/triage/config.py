@@ -1,4 +1,5 @@
 from pydantic import Field
+from pydantic.aliases import AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,7 +19,11 @@ class TriageSettings(BaseSettings):
             "clear error if neither source provides a key."
         ),
     )
-    model: str = Field(default="openai/gpt-oss-20b", description="Groq model to use")
+    model: str = Field(
+        default="openai/gpt-oss-20b",
+        validation_alias=AliasChoices("GROQ_MODEL", "MODEL"),
+        description="Groq model to use",
+    )
     temperature: float = Field(default=0.1, ge=0.0, le=2.0, description="Sampling temperature")
     max_tokens: int = Field(default=2048, gt=0, description="Max tokens in response")
     max_retries: int = Field(default=3, ge=0, description="Max retry attempts for retryable Groq API errors")
