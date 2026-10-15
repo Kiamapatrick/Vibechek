@@ -60,9 +60,26 @@ describe('ScanWizard', () => {
 
     const urlInput = screen.getByLabelText('Target URL');
     await user.type(urlInput, 'https://example.com');
+    await user.click(screen.getByLabelText(/i confirm i own or have explicit permission/i));
 
     const submitButton = screen.getByRole('button', { name: /start scan/i });
     expect(submitButton).not.toBeDisabled();
+  });
+
+  it('keeps submit disabled when URL is filled but ownership is not confirmed', async () => {
+    renderWithProviders(<ScanWizard />);
+
+    await user.type(screen.getByLabelText('Target URL'), 'https://example.com');
+
+    const submitButton = screen.getByRole('button', { name: /start scan/i });
+    expect(submitButton).toBeDisabled();
+
+    await user.click(screen.getByLabelText(/i confirm i own or have explicit permission/i));
+    expect(submitButton).not.toBeDisabled();
+
+    await user.click(screen.getByLabelText(/i confirm i own or have explicit permission/i));
+    expect(submitButton).toBeDisabled();
+    expect(api.startScan).not.toHaveBeenCalled();
   });
 
   it('clamps maxPages to 1-1000 range', async () => {
@@ -137,6 +154,7 @@ describe('ScanWizard', () => {
     const urlInput = screen.getByLabelText('Target URL');
     await user.type(urlInput, 'https://example.com');
 
+    await user.click(screen.getByLabelText(/i confirm i own or have explicit permission/i));
     const submitButton = screen.getByRole('button', { name: /start scan/i });
     await user.click(submitButton);
 
@@ -147,6 +165,7 @@ describe('ScanWizard', () => {
         max_depth: 2,
         timeout: 10,
         allow_write_tests: false,
+        confirm_ownership: true,
       });
     });
   });
@@ -159,6 +178,7 @@ describe('ScanWizard', () => {
     const urlInput = screen.getByLabelText('Target URL');
     await user.type(urlInput, 'https://invalid.com');
 
+    await user.click(screen.getByLabelText(/i confirm i own or have explicit permission/i));
     const submitButton = screen.getByRole('button', { name: /start scan/i });
     await user.click(submitButton);
 
@@ -178,6 +198,7 @@ describe('ScanWizard', () => {
     const urlInput = screen.getByLabelText('Target URL');
     await user.type(urlInput, 'https://example.com');
 
+    await user.click(screen.getByLabelText(/i confirm i own or have explicit permission/i));
     const submitButton = screen.getByRole('button', { name: /start scan/i });
     await user.click(submitButton);
 
