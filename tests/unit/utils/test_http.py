@@ -16,6 +16,13 @@ def _make_mock_response(status_code: int = 200, headers: dict | None = None) -> 
 
 
 class TestHTTPClient:
+    @pytest.fixture(autouse=True)
+    def _stub_dns(self):
+        """SSRF validation resolves hostnames; keep these unit tests offline and deterministic."""
+        public_ip = [(2, 1, 6, "", ("93.184.216.34", 0))]
+        with patch("vibeshield.utils.validation.socket.getaddrinfo", return_value=public_ip):
+            yield
+
     @pytest.fixture
     def mock_async_client_class(self):
         with patch("vibeshield.utils.http.httpx.AsyncClient") as mock_class:
