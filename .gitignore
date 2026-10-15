@@ -28,6 +28,9 @@ frontend/tsc-output.txt
 
 # Generated evaluation/test artifacts
 *_results.json
+
+# Patches (local only)
+vibeshield-patches/
 report.json
 test_server.py
 check_report.py
