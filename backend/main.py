@@ -286,11 +286,10 @@ async def start_triage(
 
     await db.triage_runs.insert_one(triage_data.model_dump(mode="json"))
 
-    if background_tasks is not None:
-        if mode == TriageMode.BASELINE:
-            background_tasks.add_task(run_baseline_triage, scan_id, triage_data)
-        else:
-            background_tasks.add_task(run_llm_triage, scan_id, triage_data)
+    if mode == TriageMode.BASELINE:
+        background_tasks.add_task(run_baseline_triage, scan_id, triage_data)
+    else:
+        background_tasks.add_task(run_llm_triage, scan_id, triage_data)
 
     return TriageRunResponse(
         triage_id=triage_data.triage_id,
