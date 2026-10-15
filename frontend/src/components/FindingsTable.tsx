@@ -95,8 +95,8 @@ export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
     onSort?.(key, direction);
   };
 
-  const SortIcon = ({ key }: { key: keyof FindingResponse }) => {
-    if (sortConfig?.key !== key) return <ChevronDown className="h-4 w-4 text-muted-foreground" />;
+  const SortIcon = ({ columnKey }: { columnKey: keyof FindingResponse }) => {
+    if (sortConfig?.key !== columnKey) return <ChevronDown className="h-4 w-4 text-muted-foreground" />;
     return sortConfig.direction === "asc" ? (
       <ChevronUp className="h-4 w-4 text-primary" />
     ) : (
@@ -175,7 +175,7 @@ export function FindingsTable({ findings, stats, onSort }: FindingsTableProps) {
                 >
                   <div className="flex items-center gap-1">
                     {label}
-                    <SortIcon key={key} />
+                    <SortIcon columnKey={key} />
                   </div>
                 </th>
               ))}

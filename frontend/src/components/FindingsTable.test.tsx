@@ -207,6 +207,38 @@ describe('FindingsTable', () => {
     });
   });
 
+  describe('sort indicator', () => {
+    const iconIn = (name: RegExp) =>
+      screen.getByRole('columnheader', { name }).querySelector('svg') as SVGElement;
+
+    it('marks the default severity-descending sort and leaves other columns neutral', () => {
+      expect(iconIn(/severity/i)).toHaveClass('text-primary');
+      expect(iconIn(/severity/i)).toHaveClass('lucide-chevron-down');
+      for (const name of [/check/i, /title/i, /score/i, /confidence/i]) {
+        expect(iconIn(name)).toHaveClass('text-muted-foreground');
+        expect(iconIn(name)).not.toHaveClass('text-primary');
+      }
+    });
+
+    it('highlights only the active column, pointing up for ascending', async () => {
+      await user.click(screen.getByRole('columnheader', { name: /severity/i }));
+
+      expect(iconIn(/severity/i)).toHaveClass('text-primary');
+      expect(iconIn(/severity/i)).toHaveClass('lucide-chevron-up');
+      expect(iconIn(/title/i)).toHaveClass('text-muted-foreground');
+      expect(iconIn(/title/i)).not.toHaveClass('text-primary');
+    });
+
+    it('points down for descending after a second click', async () => {
+      const header = screen.getByRole('columnheader', { name: /severity/i });
+      await user.click(header);
+      await user.click(header);
+
+      expect(iconIn(/severity/i)).toHaveClass('text-primary');
+      expect(iconIn(/severity/i)).toHaveClass('lucide-chevron-down');
+    });
+  });
+
   it('sorts by severity ascending when clicking header', async () => {
     const severityHeader = screen.getByRole('columnheader', { name: /severity/i });
     await user.click(severityHeader);
