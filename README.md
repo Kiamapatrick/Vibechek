@@ -243,6 +243,26 @@ Every finding is internally tagged against:
 
 This makes the tool's judgments traceable to established methodology, not vibes of its own.
 
+## Security design
+
+- **Ownership confirmation guard** — Every scan requires explicit consent: CLI `--confirm-ownership` / `-y` flag, API `confirm_ownership: true`, Frontend checkbox. Prevents unauthorized scanning. [src/vibeshield/cli.py](src/vibeshield/cli.py), [backend/main.py](backend/main.py), [frontend/src/components/ScanWizard.tsx](frontend/src/components/ScanWizard.tsx)
+- **SSRF protection & `--allow-private-targets` opt-in** — Target validation resolves hostnames and rejects loopback, private, link-local, multicast, reserved, and metadata IPs (e.g., 169.254.169.254) by default. The `--allow-private-targets` flag opts in for local development. [src/vibeshield/utils/validation.py](src/vibeshield/utils/validation.py)
+- **Supabase RLS write probe off unless `--allow-write-tests`** — Read test (GET) always runs; write test (POST) only runs when the flag is set, to avoid creating test data on production. [src/vibeshield/cli.py](src/vibeshield/cli.py), [src/vibeshield/scanner/checks/supabase_firebase.py](src/vibeshield/scanner/checks/supabase_firebase.py)
+- **Rate limiting skips signup/register/reset endpoints** — Denylist patterns exclude `/signup`, `/register`, `/password/reset`, `/forgot` from auth-rate-limit testing to avoid account creation or reset emails. [src/vibeshield/scanner/checks/rate_limiting.py](src/vibeshield/scanner/checks/rate_limiting.py)
+- **Same-origin crawl limits** — BFS crawler restricted to same origin, max depth 2, max 20 pages. [src/vibeshield/scanner/crawl.py](src/vibeshield/scanner/crawl.py)
+
+## AI triage
+
+- **BM25 retrieval over ~24 KB docs** — Knowledge base (9 markdown files in `src/vibeshield/triage/context/knowledge_base/`) indexed with BM25Okapi; top-3 snippets retrieved per finding. [src/vibeshield/triage/context/retriever.py](src/vibeshield/triage/context/retriever.py), [src/vibeshield/triage/context/loader.py](src/vibeshield/triage/context/loader.py)
+- **Groq JSON-mode client** — Structured output via `response_format={"type": "json_object"}` with retry on rate limits/timeouts/connection errors. [src/vibeshield/triage/llm/client.py](src/vibeshield/triage/llm/client.py)
+- **Deterministic baseline** — Reuses scanner's own impact/likelihood for exploitability/priority when LLM unavailable. [src/vibeshield/triage/baseline.py](src/vibeshield/triage/baseline.py)
+- **Per-finding fallback to baseline when LLM fails** — Individual finding failures (LLM error, malformed JSON, client init failure) fall back to baseline for that finding only; batch continues. [src/vibeshield/triage/orchestrator.py](src/vibeshield/triage/orchestrator.py)
+- **Spearman evaluation against human golden set** — Evaluation harness computes Spearman ρ between human ranks and LLM/baseline revised priorities. [src/vibeshield/triage/eval/harness.py](src/vibeshield/triage/eval/harness.py)
+
+## Screenshots
+
+Screenshots in `docs/screenshots/*.png` (to be added).
+
 ## Exit codes
 
 | Code | Meaning |
@@ -262,9 +282,9 @@ cd Vibechek
 pip install -e ".[dev]"
 ```
 
-## Backend, Frontend & Docker Compose
+## Backend, Frontend & Docker Compose (Development)
 
-VibeShield includes three components:
+VibeShield includes three components. **Docker Compose is a development setup** — it mounts source directories for hot-reload and is not hardened for production.
 
 ### Backend API (FastAPI + MongoDB)
 ```bash
@@ -286,7 +306,7 @@ npm run dev
 ```
 The frontend will be available at `http://localhost:3000` and proxies API calls to the backend.
 
-### Docker Compose (Full Stack)
+### Docker Compose (Full Stack — Development)
 ```bash
 docker compose up --build
 ```
