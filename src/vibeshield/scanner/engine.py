@@ -23,7 +23,7 @@ class ScannerEngine:
         max_pages: int = settings.DEFAULT_MAX_PAGES,
         timeout: float = settings.DEFAULT_TIMEOUT,
         allow_write_tests: bool = False,
-        allow_private_targets: bool = True,
+        allow_private_targets: bool = False,
         progress_callback: Callable[[str, dict[str, Any]], Any] | None = None,
     ):
         self.target_url = target_url

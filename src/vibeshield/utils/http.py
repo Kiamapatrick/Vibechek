@@ -13,7 +13,7 @@ class HTTPClient:
         self,
         timeout: float = 10.0,
         max_redirects: int = 5,
-        allow_private_targets: bool = True,
+        allow_private_targets: bool = False,
     ):
         self.timeout = httpx.Timeout(timeout, connect=5.0)
         self.max_redirects = max_redirects

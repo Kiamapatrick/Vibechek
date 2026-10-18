@@ -80,6 +80,18 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: frontend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Audit
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: frontend
+
       - name: Run tests
         run: npm test
         working-directory: frontend

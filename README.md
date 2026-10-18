@@ -60,6 +60,16 @@ vibeshield scan https://your-app.com --confirm-ownership --max-pages 50 --max-de
 
 > Only scan applications you own or have explicit written permission to test. Unauthorized scanning is unethical and may violate laws including the CFAA (US) and Computer Misuse Act (UK).
 
+### Private Target Scanning (Opt-In)
+
+**Scanning private/internal addresses (localhost, 10.x, 192.168.x, link-local, etc.) is disabled by default.** This is an SSRF protection measure.
+
+To scan a local development server you own, pass `--allow-private-targets`:
+```bash
+vibeshield scan http://localhost:8000 --confirm-ownership --allow-private-targets
+```
+> `--allow-private-targets` is needed to scan localhost dev servers. Never use this against targets you don't own.
+
 ## Output
 
 ### Plain-language report (default)

@@ -87,7 +87,8 @@ class TestCLI:
             max_depth=2,
             max_pages=20,
             timeout=10.0,
-            allow_write_tests=False
+            allow_write_tests=False,
+            allow_private_targets=False
         )
         engine_instance.run.assert_called_once()
         mock_plain_reporter.generate.assert_called_once()
@@ -258,6 +259,33 @@ class TestCLI:
         
         assert result.exit_code == 0
         assert "Write Tests Enabled" in result.output
+
+    def test_scan_private_target_rejected_without_flag(self, mock_engine_class, mock_plain_reporter, mock_json_reporter):
+        """Scanning localhost without --allow-private-targets exits with code 1 and clean message."""
+        result = runner.invoke(app, ["scan", "http://127.0.0.1:8000", "--confirm-ownership"])
+        
+        assert result.exit_code == 1
+        assert "disallowed" in result.output.lower() or "private" in result.output.lower()
+        # Should be a clean one-line error, not a traceback
+        assert "Traceback" not in result.output
+        assert "ValueError" not in result.output
+
+    def test_scan_private_target_allowed_with_flag(self, mock_engine_class, mock_plain_reporter, mock_json_reporter):
+        """Scanning localhost with --allow-private-targets proceeds past validation."""
+        mock_class, engine_instance = mock_engine_class
+        
+        result = runner.invoke(app, ["scan", "http://127.0.0.1:8000", "--confirm-ownership", "--allow-private-targets"])
+        
+        assert result.exit_code == 0
+        mock_class.assert_called_once_with(
+            target_url="http://127.0.0.1:8000",
+            max_depth=2,
+            max_pages=20,
+            timeout=10.0,
+            allow_write_tests=False,
+            allow_private_targets=True
+        )
+        engine_instance.run.assert_called_once()
 
 
 class TestScannerEngine:
@@ -482,4 +510,4 @@ class TestScannerEngine:
             max_depth=5,
             max_pages=100
         )
-        mock_http_class.assert_called_once_with(timeout=30.0, allow_private_targets=True)
+        mock_http_class.assert_called_once_with(timeout=30.0, allow_private_targets=False)

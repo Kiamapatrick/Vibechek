@@ -284,15 +284,14 @@ class TestHTTPClient:
         assert timeout.read == 30.0
 
     @pytest.mark.asyncio
-    async def test_allow_private_targets_default_true(self, mock_async_client_class):
-        """CLI default: allow private targets."""
+    async def test_allow_private_targets_default_false(self, mock_async_client_class):
+        """Default is False (opt-in for private targets)."""
         _, _ = mock_async_client_class
         async with HTTPClient():
             pass
 
-        # Default should be True for CLI usage
         client = HTTPClient()
-        assert client.allow_private_targets is True
+        assert client.allow_private_targets is False
 
     @pytest.mark.asyncio
     async def test_allow_private_targets_can_be_false(self, mock_async_client_class):

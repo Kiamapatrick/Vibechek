@@ -11,6 +11,7 @@ from vibeshield.reporting.json import JSONReporter
 from vibeshield.reporting.plain import PlainReporter
 from vibeshield.scanner.engine import ScannerEngine
 from vibeshield.triage.pipeline import run_full_pipeline
+from vibeshield.utils.validation import validate_target_or_raise
 
 app = typer.Typer(
     name="vibeshield",
@@ -54,6 +55,10 @@ def scan(
     allow_write_tests: bool = typer.Option(
         False, "--allow-write-tests",
         help="Allow write-based tests (e.g. Supabase RLS insert probe) that may create test data on the target. Off by default — read-only checks are sufficient for most findings.",
+    ),
+    allow_private_targets: bool = typer.Option(
+        False, "--allow-private-targets",
+        help="Allow scanning private/internal IP addresses (localhost, 10.x, 192.168.x, etc.). Off by default — only use for local development servers you own.",
     ),
     output: str = typer.Option(
         "plain", "--output", "-o",
@@ -106,6 +111,14 @@ def scan(
         console.print("[red]Error:[/red] URL must start with http:// or https://")
         raise typer.Exit(code=1)
 
+    try:
+        validate_target_or_raise(url, allow_private=allow_private_targets)
+    except ValueError as e:
+        if "disallowed address" in str(e) or "private" in str(e).lower():
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(code=1)
+        raise
+
     if output not in ("plain", "json", "both"):
         console.print(f"[red]Error:[/red] Invalid output format: {output}. Use: plain, json, or both")
         raise typer.Exit(code=1)
@@ -124,6 +137,7 @@ def scan(
         max_pages=max_pages,
         timeout=timeout,
         allow_write_tests=allow_write_tests,
+        allow_private_targets=allow_private_targets,
     )
 
     try:
